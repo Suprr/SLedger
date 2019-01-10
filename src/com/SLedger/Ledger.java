@@ -21,6 +21,7 @@ public class Ledger {
 
     public Ledger (){
         transactions = new LinkedList<>();
+        trustlines = new ArrayList<>();
         total = 0;
     }
 
@@ -104,10 +105,18 @@ public class Ledger {
     }
 
     //establish a trustline object between two unique identities
-    public Trustline createTrustline(String peerName, String pubkey, String ip){
+    public void createTrustline(String peerName, String pubkey, String ip){
         //create user to be assigned to a trustline
+
+        for(Trustline t: trustlines){
+            if(t.getReceiver().getCandidate().equals(peerName)){
+                System.out.println("Trustline already created with " + peerName);
+                return;
+            }
+        }
         User peer = new User(peerName, ip, pubkey);
-        return new Trustline(user,peer);
+        Trustline newLine = new Trustline(user,peer);
+        trustlines.add(newLine);
     }
 
     @SuppressWarnings("Duplicates")
@@ -118,18 +127,18 @@ public class Ledger {
 
         //find if trustline for chosen candidate exists
         for (Trustline tmp : trustlines) {
-            if (tmp.getReceiver().getCandidate() == candidate) {
+            if (tmp.getReceiver().getCandidate().equals(candidate)) {
                 line = tmp;
                 //candidate found
                 flag = true;
                 break;
             }
         }
-        if (flag == true) {
+        if (flag) {
             User sender = line.getSender();
             User receiver = line.getReceiver();
 
-            sender.setBalance(sender.getBalance() - amount);
+            sender.setBalance(sender.getBalance() + amount);
             receiver.setBalance(receiver.getBalance() + amount);
             total += amount;
 
@@ -159,27 +168,26 @@ public class Ledger {
 
             //find if trustline for chosen candidate exists
             for(Trustline tmp : trustlines){
-                if(tmp.getReceiver().getCandidate() == candidate){
+                if(tmp.getReceiver().getCandidate().equals(candidate)){
                     line = tmp;
                     //candidate found
                     flag = true;
                     break;
                 }
             }
-            if(flag== true){
+            if(flag){
                 User sender = line.getSender();
                 User receiver = line.getReceiver();
 
                 double newbalance = verifyBalance(line, amount);
                 //we have not reached our credit limit of 100, simply add the transaction
                 if(newbalance==0){
-                    total -= amount;
                     sender.setBalance(sender.getBalance()-amount);
-                    receiver.setBalance(receiver.getBalance()+amount);
+                    receiver.setBalance(receiver.getBalance()-amount);
                     total -= amount;
 
                     Transaction newTrans = new Transaction(user, receiver, line, amount);
-                    line.updateBal(receiver, amount);
+                    line.updateBal(receiver, -1*amount);
                     transactions.add(newTrans);
                 }else{
                     settleBalances();
@@ -192,10 +200,23 @@ public class Ledger {
             }
 
         }
+    private String capitalize(final String line) {
+        return Character.toUpperCase(line.charAt(0)) + line.substring(1);
+    }
+
+    public void balance(){
+        for(Trustline t: trustlines){
+            String peer = capitalize(t.getReceiver().getCandidate());
+            double balance = t.getReceiver().getBalance();
+            System.out.print(peer + ": " + balance);
+        }
+        System.out.println("Total: " + total);
+    }
 
     private void settleBalances() {
         for(Transaction t: transactions){
 //            t.get
         }
     }
+
 }
