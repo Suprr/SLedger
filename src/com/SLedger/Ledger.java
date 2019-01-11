@@ -1,8 +1,11 @@
 package com.SLedger;
 
 import org.apache.http.client.utils.URIBuilder;
+
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.*;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -17,7 +20,7 @@ public class Ledger {
     Queue<Transaction> transactions;
     List<Trustline> trustlines;
     User user;
-    double total;
+    private double total;
 
     public Ledger (){
         transactions = new LinkedList<>();
@@ -25,7 +28,7 @@ public class Ledger {
         total = 0;
     }
 
-    public void assignCurrentUser(String[] args) throws Exception {
+    public void assignCurrentUser(String[] args, String port) throws Exception {
         String candidate = args[0];
         File tmpDirpk = new File("KeyPair/privateKey");
         boolean existpk = tmpDirpk.exists();
@@ -41,7 +44,7 @@ public class Ledger {
             String pkey = Keys.savePublicKey(publicKey);
             String prkey = Keys.savePrivateKey(privateKey);
 
-            user = new User(candidate, pkey , prkey, null);
+            user = new User(candidate, pkey , prkey, port);
 
             //add the user to the blockchain
             addUserAPI(args);
@@ -105,7 +108,7 @@ public class Ledger {
     }
 
     //establish a trustline object between two unique identities
-    public void createTrustline(String peerName, String pubkey, String ip){
+    public void createTrustline(String peerName, String pubkey, String ip, String port) throws IOException, URISyntaxException {
         //create user to be assigned to a trustline
 
         for(Trustline t: trustlines){
@@ -114,7 +117,74 @@ public class Ledger {
                 return;
             }
         }
-        User peer = new User(peerName, ip, pubkey);
+
+        User peer = new User(peerName, ip, pubkey,port);
+        boolean found = getUserAPI(peerName);
+
+        Runnable r = new Runnable() {
+            public void run() {
+                new Client(user,peer);
+            }
+        };
+
+        Trustline newLine = new Trustline(user,peer);
+        trustlines.add(newLine);
+    }
+
+    //gets a user's peer info from blockchain
+    public boolean getUserAPI(String candidate) throws IOException, URISyntaxException {
+        String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
+        URIBuilder builder = new URIBuilder()
+                .setScheme("http")
+                .setPort(5000)
+                .setHost(urlstring);
+
+        URI uri = builder.build();
+        urlstring = uri.toString()
+                +"/get_users?"
+                +"candidate="+candidate;
+
+        //send request
+        URL url = new URL(urlstring);
+        System.out.println(urlstring);
+
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setDoOutput(true);
+        con.setRequestMethod("GET");
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                con.getInputStream()));
+
+        String inputLine;
+
+        while ((inputLine = in.readLine()) != null)
+            System.out.println(inputLine);
+        in.close();
+
+        if(inputLine.length()>5){
+            con.disconnect();
+            return true;
+        }else {
+            LOGGER.info("Failed to find user in FakeChain");
+            con.disconnect();
+            return false;
+        }
+
+    }
+
+    //establish a trustline object between two unique identities
+    public void receiveTrustline(String peerName, String pubkey, String ip, String port){
+        //create user to be assigned to a trustline
+
+        for(Trustline t: trustlines){
+            if(t.getReceiver().getCandidate().equals(peerName)){
+                System.out.println("Trustline already created with " + peerName);
+                return;
+            }
+        }
+
+        User peer = new User(peerName, ip, pubkey, port);
+
         Trustline newLine = new Trustline(user,peer);
         trustlines.add(newLine);
     }
@@ -134,18 +204,27 @@ public class Ledger {
                 break;
             }
         }
-        if (flag) {
+        if(flag){
             User sender = line.getSender();
-            User receiver = line.getReceiver();
 
-            sender.setBalance(sender.getBalance() + amount);
-            receiver.setBalance(receiver.getBalance() + amount);
-            total += amount;
+            double newbalance = verifyBalance(sender, amount);
+            //we have not reached our credit limit of 100, simply add the transaction
+            if(newbalance==0){
+                sender.setBalance(sender.getBalance()-amount);
+                updateTotal(amount);
 
-            Transaction newTrans = new Transaction(user, receiver, line, amount);
-//            line.updateBal(receiver, amount);
-            transactions.add(newTrans);
-            return true;
+                Transaction newTrans = new Transaction(user, sender, line, amount);
+                transactions.add(newTrans);
+                return true;
+
+            }else{
+//                    settleBalance(line);
+                //reset receiver balance to remainder of settlement {100-remainder}
+                sender.setBalance(newbalance);
+                //update users total to account for settlement
+                updateTotal(100);
+                return true;
+            }
         } else {
             LOGGER.info("Transaction Failed");
             return false;
@@ -153,8 +232,8 @@ public class Ledger {
     }
 
     //check if trustline balance will exceed 100 needed for settlement
-    public double verifyBalance(Trustline line, double amount){
-        double receiverbal = line.getReceiver().getBalance();
+    public double verifyBalance(User user, double amount){
+        double receiverbal = user.getBalance();
         if(receiverbal + amount > 100){
             return receiverbal + amount - 100;
         }else return 0;
@@ -162,7 +241,7 @@ public class Ledger {
 
     @SuppressWarnings("Duplicates")
     //create a transaction to be added to the queue of transactions
-        public boolean createTransaction(String candidate , double amount){
+        public boolean createTransaction(String candidate , double amount) throws IOException, URISyntaxException {
             Trustline line = null;
             boolean flag = false;
 
@@ -175,14 +254,17 @@ public class Ledger {
                     break;
                 }
             }
-            if(flag){
+
+            boolean found = getUserAPI(candidate);
+            //trustline exists and user exists in blockchain
+            if(flag && found){
                 User receiver = line.getReceiver();
 
-                double newbalance = verifyBalance(line, amount);
+                double newbalance = verifyBalance(receiver, amount);
                 //we have not reached our credit limit of 100, simply add the transaction
                 if(newbalance==0){
                     receiver.setBalance(receiver.getBalance()-amount);
-                    total -= amount;
+                    updateTotal(-1*amount);
 
                     Transaction newTrans = new Transaction(user, receiver, line, amount);
                     transactions.add(newTrans);
@@ -193,7 +275,7 @@ public class Ledger {
                     //reset receiver balance to remainder of settlement {100-remainder}
                     receiver.setBalance(newbalance);
                     //update users total to account for settlement
-                    total += 100;
+                    updateTotal(100);
                     return true;
                 }
 
@@ -202,10 +284,13 @@ public class Ledger {
                 return false;
             }
         }
-    private String capitalize(final String line) {
+        private String capitalize(final String line) {
         return Character.toUpperCase(line.charAt(0)) + line.substring(1);
     }
 
+    public synchronized void updateTotal(double amount){
+        total+=amount;
+    }
     //lists all balances available
     public void balance(){
         for(Trustline t: trustlines){

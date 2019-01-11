@@ -28,27 +28,27 @@ public class User {
     private double balance;
 
     //create new "account" to be associated with a given trustline object
-    public User(String name, String ip, String pubkey){
+    public User(String name, String ip, String pubkey, String port){
         this.candidate = name;
         this.ip = ip;
-        this.port = "3001";
+        this.port = port;
         this.pubkey = pubkey;
         balance = 0;
     }
 
-    //create new "account" to be associated with a given trustline object for CURRENT USER
-    public User(String name, String pubkey, String privkey, String ignored){
-        this.candidate = name;
-        String ip = grabIp();
-        if(!ip.equals("error")){
-            this.ip = grabIp();
-            this.port = "3001";
-        }
-
-        this.pubkey = pubkey;
-        this.privkey = privkey;
-        balance = 0;
-    }
+//    //create new "account" to be associated with a given trustline object for CURRENT USER
+//    public User(String name, String pubkey, String privkey){
+//        this.candidate = name;
+//        String ip = grabIp();
+//        if(!ip.equals("error")){
+//            this.ip = grabIp();
+//            this.port = "3001";
+//        }
+//
+//        this.pubkey = pubkey;
+//        this.privkey = privkey;
+//        balance = 0;
+//    }
 
     /*grab current user ip
     adopted from https://www.geeksforgeeks.org/java-program-find-ip-address-computer/ */
@@ -116,11 +116,11 @@ public class User {
         this.port = port;
     }
 
-    public void setBalance(double balance) {
+    public synchronized void setBalance(double balance) {
         this.balance = balance;
     }
 
-    public double getBalance() {
+    public synchronized double getBalance() {
         return balance;
     }
 }

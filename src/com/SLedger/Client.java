@@ -17,8 +17,11 @@ public class Client {
     private BufferedReader in;
     private PrintWriter out;
 
-    public Client() {
-
+    User peer;
+    User user;
+    public Client(User user, User peer) {
+        this.user = user;
+        this.peer = peer;
         initHostName();
         runClient();// have fun
     }
@@ -26,8 +29,8 @@ public class Client {
     public void initHostName() {
         try {
             //replace host name with your computer name or IP address
-            String host = InetAddress.getLocalHost().getHostAddress();
-            serverAddress = host;
+//            String host = InetAddress.getLocalHost().getHostAddress();
+            serverAddress = peer.getIp();
             if (serverAddress == null)
                 System.exit(1);
 
@@ -64,7 +67,7 @@ public class Client {
     public void initPortNo() {
         try {
 
-            String portNo = "0";
+            String portNo = peer.getPort();
 
             portNo = portNo.trim();
             if (portNo.length() == 0)// empty field
@@ -87,36 +90,34 @@ public class Client {
     }
 
     public void sendChatName() throws IOException {
-        System.out.println("Enter your name:");
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        String name = br.readLine();
-        if (name == null)
-            System.exit(1);
+        String name = user.getCandidate();
+//        if (name == null)
+//            System.exit(1);
 
-        // title case (get only first 9 chars of chat name)
-        name = name.trim();
+//        // title case (get only first 9 chars of chat name)
+//        name = name.trim();
 
-        if (name.equalsIgnoreCase("All")) {
-            System.out.println("This name is already reserved. Try different one.");
-            sendChatName();
-            return;
-        }
-        if (name.length() == 0) {
-            System.out.println("Please enter your chat name.");
-            sendChatName();
-            return;
-        }
-        if (name.length() == 1)
-            chatName = String.valueOf(name.charAt(0)).toUpperCase();
-        if (name.length() > 1 && name.length() < 10)
-            chatName = String.valueOf(name.charAt(0)).toUpperCase()
-                    + name.substring(1).toLowerCase();
-        else if (name.length() > 9)
-            chatName = String.valueOf(name.charAt(0)).toUpperCase()
-                    + name.substring(1, 10).toLowerCase();
+//        if (name.equalsIgnoreCase("All")) {
+//            System.out.println("This name is already reserved. Try different one.");
+//            sendChatName();
+//            return;
+//        }
+//        if (name.length() == 0) {
+////            System.out.println("Please enter your chat name.");
+//            sendChatName();
+//            return;
+//        }
+//        if (name.length() == 1)
+//            chatName = String.valueOf(name.charAt(0)).toUpperCase();
+//        if (name.length() > 1 && name.length() < 10)
+//            chatName = String.valueOf(name.charAt(0)).toUpperCase()
+//                    + name.substring(1).toLowerCase();
+//        else if (name.length() > 9)
+//            chatName = String.valueOf(name.charAt(0)).toUpperCase()
+//                    + name.substring(1, 10).toLowerCase();
 
         // sending opcode first then sending chatName to the server
-        out.println(Opcode.CLIENT_CONNECTEING);
+        out.println(Opcode.CLIENT_CONNECTING);
         out.println(chatName);
     }
 
@@ -126,7 +127,7 @@ public class Client {
             while (true) {
                 int opcode = Integer.parseInt(in.readLine());
                 switch (opcode) {
-                    case Opcode.CLIENT_CONNECTEING:
+                    case Opcode.CLIENT_CONNECTING:
                         // this client is connecting
                         boolean result = Boolean.valueOf(in.readLine());
                         if (result) {
@@ -158,8 +159,8 @@ public class Client {
 
     // *********************************** Main Method ********************
 
-    public static void main(String args[]) {
-        new Client();
-    }
+//    public static void main(String args[]) {
+//        new Client();
+//    }
 
 }

@@ -12,7 +12,7 @@ public class ClientThread implements Runnable {
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private String chatName;
+    private String name;
 
     // seperate thread
     private Thread thread;
@@ -22,11 +22,13 @@ public class ClientThread implements Runnable {
 
     // opcode
     private int opcode;
+    private Ledger ledger;
     private HashMap<String, ClientThread> clientInfo = new HashMap<String, ClientThread>();
 
-    public ClientThread(Socket socket) {
+    public ClientThread(Socket socket, Ledger ledger) {
         try {
             this.socket = socket;
+            this.ledger = ledger;
             this.clientInfo = Server.getClientInfo();
 
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -36,7 +38,7 @@ public class ClientThread implements Runnable {
             thread.start();
 
         } catch (IOException e) {
-            System.out.println(e);
+//            System.out.println(e);
         }
     }
 
@@ -48,52 +50,57 @@ public class ClientThread implements Runnable {
 
                 opcode = Integer.parseInt(in.readLine());// getting opcode first from client
                 switch (opcode) {
-                    case Opcode.CLIENT_CONNECTEING:
-                        chatName = in.readLine();
+                    case Opcode.CLIENT_CONNECTING: {
+                        name = in.readLine();
 
-                        boolean result = clientInfo.containsKey(chatName);
-                        out.println(Opcode.CLIENT_CONNECTEING);
+                        boolean result = clientInfo.containsKey(name);
+                        out.println(Opcode.CLIENT_CONNECTING);
                         out.println(result);
                         if (result)// wait for another chat name if already present
                             continue;
 
-                        // send list of already online users to new online user
-                        // for (Object user : clientInfo.keySet().toArray()) {
-                        // out.println(Opcode.CLIENT_CONNECTED);
-                        // out.println(user.toString());
-                        // }
+//                         send list of already online users to new online user
+                        for (Object user : clientInfo.keySet().toArray()) {
+                            out.println(Opcode.CLIENT_CONNECTED);
+//                            out.println(user.toString());
+                        }
 
                         // put new entry in clientInfo hashmap
-                        clientInfo.put(chatName, this);
+                        clientInfo.put(name, this);
 
                         int i = 0;
                         for (String key : clientInfo.keySet()) {
-                            if (key.equals(chatName)) {
-                                System.out.println(chatName + " added at " + (i + 1) + " position");
+                            if (key.equals(name)) {
+                                System.out.println(name + " added at " + (i + 1) + " position");
                             }
                             i++;
                         }
 
-                        // tell other users about new added user and update their online users list
-                        for (ClientThread client : clientInfo.values()) {
-                            client.out.println(Opcode.CLIENT_CONNECTED);
-                            client.out.println(clientInfo.size());
-
-                            for (ClientThread client1 : clientInfo.values()) {
-                                client.out.println(client1.chatName);
-                            }
-                        }
-
+//                        // tell other users about new added user and update their online users list
+//                        for (ClientThread client : clientInfo.values()) {
+//                            client.out.println(Opcode.CLIENT_CONNECTED);
+//                            client.out.println(clientInfo.size());
+//
+//                            for (ClientThread client1 : clientInfo.values()) {
+//                                client.out.println(client1.chatName);
+//                            }
+//                        }
                         break;
+                    }
+                    case Opcode.CLIENT_PAYMENT:
+                        name = in.readLine();
+                        double amount = Double.parseDouble(in.readLine());// getting opcode first from client
+
+
                 }
             }
 
-            // clsoe all connections
+            // close all connections
             out.close();
             in.close();
             socket.close();
         } catch (IOException e) {
-            System.out.println(e);
+//            System.out.println(e);
         }
     }
 }

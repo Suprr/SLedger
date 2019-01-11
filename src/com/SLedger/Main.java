@@ -12,7 +12,7 @@ public class Main {
         int port = pickport();
         Runnable r = new Runnable() {
             public void run() {
-                server(port);
+                server(port, ledger);
             }
         };
 //        https://stackoverflow.com/questions/12551514/create-threads-in-java-to-run-in-background
@@ -20,7 +20,7 @@ public class Main {
 
         ledger = new Ledger();
 
-        ledger.assignCurrentUser(new String[]{"1","2","3","4","5"});
+        ledger.assignCurrentUser(new String[]{"1","2","3","4","5"},port+"");
         System.out.println("Welcome to SLedger - A decentralized platform to facilitate micropayments across FakeChain!");
         System.out.println("Type 'help' to see all commands");
         Scanner scanner = new Scanner(System.in);
@@ -28,14 +28,16 @@ public class Main {
             while (scanner.hasNextLine()){
                 String line = scanner.nextLine().toLowerCase();
                 switch (line){
-                    case "openline":
+                    case "opentrustline":
                     case "open trustline":
                     case "open_trustline":
                         System.out.println("Who is the recipient? [Bob]");
                         String recipient = scanner.next();
                         System.out.println("IP address of recipient? [192.168.1.1]");
                         String ip = scanner.next();
-                        System.out.println("Paste RSA public key such as:\n[-----BEGIN PUBLIC KEY-----\n" +
+                        System.out.println("Port?");
+                        String peerPort = scanner.next();
+                        System.out.println("Paste their RSA public key such as:\n[-----BEGIN PUBLIC KEY-----\n" +
                                 "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0\n" +
                                 "FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/\n" +
                                 "3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB\n" +
@@ -44,15 +46,13 @@ public class Main {
                         scanner.nextLine();
 
                         System.out.println(recipient + " " + ip + " " + pubkey);
-                        ledger.createTrustline(recipient,ip,pubkey);
+                        ledger.createTrustline(recipient,ip,pubkey,peerPort);
                         break;
                     case "pay":
                         System.out.println("Who is the recipient and what amount? [Bob]<space>[10]");
                         String payto = scanner.next();
-                        double amount = scanner.nextDouble();
+                        double amount = Double.parseDouble(scanner.next());
                         scanner.nextLine();
-                        System.out.println(payto + amount);
-
                         ledger.createTransaction(payto,amount);
                         break;
                     case "balance":
@@ -93,7 +93,7 @@ public class Main {
         );
     }
 
-    private static void server(int port) {
-        new Server(port);
+    private static void server(int port, Ledger ledger) {
+        new Server(port, ledger);
     }
 }

@@ -12,12 +12,13 @@ public class Server {
     // Connection state info
     private static LinkedHashMap<String, ClientThread> clientInfo = new LinkedHashMap<String, ClientThread>();
     int port;
+    Ledger ledger;
     // TCP Components
     private ServerSocket serverSocket;
-
     // Main Constructor
-    public Server(int port) {
+    public Server(int port, Ledger ledger) {
         this.port = port;
+        this.ledger = ledger;
         startServer();// start the server
     }
 
@@ -32,14 +33,13 @@ public class Server {
 
             int portNo = Integer.valueOf(port);
             serverSocket = new ServerSocket(portNo, 0, InetAddress.getLocalHost());
-            System.out.println(serverSocket);
+//            System.out.println(serverSocket);
 
-            System.out.println(serverSocket.getInetAddress().getHostName() + ":"
-                    + serverSocket.getLocalPort());
+//            System.out.println(serverSocket.getInetAddress().getHostName() + ":" + serverSocket.getLocalPort());
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                new ClientThread(socket);
+                new ClientThread(socket,ledger);
             }
         } catch (IOException e) {
             System.out.println("IO Exception:" + e);
