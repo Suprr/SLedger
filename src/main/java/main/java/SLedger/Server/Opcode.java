@@ -1,4 +1,4 @@
-package com.SLedger;
+package main.java.SLedger.Server;
 
 public interface Opcode {
     int CLIENT_CONNECTING = 1;

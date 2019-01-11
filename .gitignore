@@ -9,6 +9,8 @@
 .idea/**/shelf
 .idea/
 KeyPair/
+target/
+
 # Generated files
 .idea/**/contentModel.xml
 

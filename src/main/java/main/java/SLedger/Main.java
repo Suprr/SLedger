@@ -1,5 +1,7 @@
-package com.SLedger;
+package main.java.SLedger;
 
+import main.java.SLedger.Ledger.Ledger;
+import main.java.SLedger.Server.Server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.Scanner;
@@ -9,7 +11,7 @@ public class Main {
     private static Ledger ledger;
 
     public static void main(String[] args) throws Exception {
-        int port = pickport();
+        final String port = "" + pickport();
         Runnable r = new Runnable() {
             public void run() {
                 server(port, ledger);
@@ -19,8 +21,30 @@ public class Main {
         new Thread(r).start();
 
         ledger = new Ledger();
+        //uncommment to test without input arguments as user "test"
+//        ledger.assignCurrentUser(new String[]{"test",
+//                "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3gonoq5MgzGUGZ07+XO2ln2yU" +
+//                "8xaYu6CNdC8L14f4GJy8zXpTMtk/kqdLxQSnXKYI8nzrlon4rVQz1piuMwiZS1fI" +
+//                "z80JpVSDoCThzZ+UQbBy/pj+jXSYC1I1jRz1hFYIiXGSCYwahEqk6rzUKR+L8v6Z" +
+//                "SQ5y5Vj3eIGjP9D+AQIDAQAB"
+//                ,"99",
+//                "MIICXQIBAAKBgQC3gonoq5MgzGUGZ07+XO2ln2yU8xaYu6CNdC8L14f4GJy8zXpT" +
+//                "Mtk/kqdLxQSnXKYI8nzrlon4rVQz1piuMwiZS1fIz80JpVSDoCThzZ+UQbBy/pj+" +
+//                "jXSYC1I1jRz1hFYIiXGSCYwahEqk6rzUKR+L8v6ZSQ5y5Vj3eIGjP9D+AQIDAQAB" +
+//                "AoGBALETRo38WalRcb5/G4t5Elw5/OWxt8FDc8ZrMSaFII/29+97eykjLN0aX1JO" +
+//                "15HDZffGPWJ7TcFnR5QJ5CRb3FOlJCBWZu+9b+1WWuCTvHeyjt3yLh6Df/jscO1O" +
+//                "T9xd1vVGXMdZ9S9ydXjlbEUPY/mtoljvPS6AqY+0QrXgZ5EBAkEA3gTE+ee5iHoA" +
+//                "vnJt4zI9sJAd+27IUJz8fR8gL9+srXlotsKzeE7sfHQT8luuUGfw4/3Vhhf3MV/n" +
+//                "udnxA12P0QJBANOY53KnlRVUVStANe2e80lKNDXLbhlzkoz9YLxH5FZkl7SGNgpe" +
+//                "gJ44/sjPJl/Kiudxy16kN9MUGPaLxYqNxzECQHG888Qq6Ct4hQULzivEQ0I+sn1q" +
+//                "hYh2xAq9dVnRNr8wIWrvV83ccN5ZARb5zNU4SnoiQc8OW/6ZaTcW5ZeZyOECQQCU" +
+//                "j40ofap5UD1/4VQ7olbThSrE/jAt5GvnW1pYtu0FDxlIINa+Tv1kmUWhPXeG19DQ" +
+//                "kJ+lsgyTwU+JgjbOgZ5xAkApH8jt7USmCr7kYIbJjEojhShOhacSwaPPRHs7nASH" +
+//                "qiy1Etfx6abtTneSYzJnFO5tzEDSNJ7fUyuna4WStCFP"
+//                ,"192.168.1.1"
+//                }, port);
+        ledger.assignCurrentUser(args, port);
 
-        ledger.assignCurrentUser(new String[]{"1","2","3","4","5"},port+"");
         System.out.println("Welcome to SLedger - A decentralized platform to facilitate micropayments across FakeChain!");
         System.out.println("Type 'help' to see all commands");
         Scanner scanner = new Scanner(System.in);
@@ -37,15 +61,13 @@ public class Main {
                         String ip = scanner.next();
                         System.out.println("Port?");
                         String peerPort = scanner.next();
-                        System.out.println("Paste their RSA public key such as:\n[-----BEGIN PUBLIC KEY-----\n" +
+                        System.out.println("Paste their RSA public key such as: <NO HEADERS>\n" +
                                 "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0\n" +
                                 "FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/\n" +
-                                "3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB\n" +
-                                "-----END PUBLIC KEY-----]");
+                                "3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB\n");
                         String pubkey = scanner.next();
                         scanner.nextLine();
 
-                        System.out.println(recipient + " " + ip + " " + pubkey);
                         ledger.createTrustline(recipient,ip,pubkey,peerPort);
                         break;
                     case "pay":
@@ -84,6 +106,7 @@ public class Main {
         }
         return port;
     }
+
     public static void helpMenu(){
         System.out.println(
                 "\nopen_trustline \n\t[name] \n\t[ip] \n\t[pubkey]  \n\tConnect to another user on FakeChain" +
@@ -93,7 +116,7 @@ public class Main {
         );
     }
 
-    private static void server(int port, Ledger ledger) {
+    private static void server(String port, Ledger ledger) {
         new Server(port, ledger);
     }
 }

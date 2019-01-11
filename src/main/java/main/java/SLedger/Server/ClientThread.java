@@ -1,10 +1,13 @@
-package com.SLedger;
+package main.java.SLedger.Server;
+
+import main.java.SLedger.Ledger.Ledger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 
 public class ClientThread implements Runnable {
@@ -59,15 +62,9 @@ public class ClientThread implements Runnable {
                         if (result)// wait for another chat name if already present
                             continue;
 
-//                         send list of already online users to new online user
-                        for (Object user : clientInfo.keySet().toArray()) {
-                            out.println(Opcode.CLIENT_CONNECTED);
-//                            out.println(user.toString());
-                        }
-
                         // put new entry in clientInfo hashmap
                         clientInfo.put(name, this);
-
+                        ledger.receiveTrustline(name);
                         int i = 0;
                         for (String key : clientInfo.keySet()) {
                             if (key.equals(name)) {
@@ -76,15 +73,6 @@ public class ClientThread implements Runnable {
                             i++;
                         }
 
-//                        // tell other users about new added user and update their online users list
-//                        for (ClientThread client : clientInfo.values()) {
-//                            client.out.println(Opcode.CLIENT_CONNECTED);
-//                            client.out.println(clientInfo.size());
-//
-//                            for (ClientThread client1 : clientInfo.values()) {
-//                                client.out.println(client1.chatName);
-//                            }
-//                        }
                         break;
                     }
                     case Opcode.CLIENT_PAYMENT:
@@ -101,6 +89,8 @@ public class ClientThread implements Runnable {
             socket.close();
         } catch (IOException e) {
 //            System.out.println(e);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
         }
     }
 }

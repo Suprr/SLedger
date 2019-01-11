@@ -1,23 +1,17 @@
-package com.SLedger;
+package main.java.SLedger.Ledger;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.http.client.utils.URIBuilder;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.*;
 import java.util.logging.Logger;
 
-/*
-*URL params*
-**candidate**: access key given at top of prompt
-**public_key**: node name
-**amount**: initial starting funds
-**private_key**: secret key to submit payments to FakeChain
-**peering_info**: custom JSON object of your design containing information
-used to connect to other users in the network
-
-**example response**: "success"
- */
 public class User {
-//    A instance of a logger use for logging.
+    //    A instance of a logger use for logging.
     private final static Logger LOGGER = Logger.getLogger(User.class.getName());
 
     private String candidate;
@@ -28,7 +22,7 @@ public class User {
     private double balance;
 
     //create new "account" to be associated with a given trustline object
-    public User(String name, String ip, String pubkey, String port){
+    public User(String name, String ip, String pubkey, String port) {
         this.candidate = name;
         this.ip = ip;
         this.port = port;
@@ -52,17 +46,16 @@ public class User {
 
     /*grab current user ip
     adopted from https://www.geeksforgeeks.org/java-program-find-ip-address-computer/ */
-    public String grabIp(){
+    public String grabIp() {
         // Find public IP address
         String systemipaddress = "";
-        try{
+        try {
             URL url_name = new URL("http://bot.whatismyipaddress.com");
             BufferedReader sc = new BufferedReader(new InputStreamReader(url_name.openStream()));
 
             // reads system IPAddress
             systemipaddress = sc.readLine().trim();
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             systemipaddress = "error";
             LOGGER.info("Could not fetch this systems ip address");
 
@@ -71,7 +64,7 @@ public class User {
         return systemipaddress;
     }
 
-    public void update(double amount){
+    public void update(double amount) {
         balance += amount;
     }
 
@@ -122,5 +115,51 @@ public class User {
 
     public synchronized double getBalance() {
         return balance;
+    }
+
+    //inserts a user into the blockchain
+    public void addUserAPI(String[] args, String port) throws IOException, URISyntaxException {
+        if (args.length == 5) {
+            String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
+            URIBuilder builder = new URIBuilder()
+                    .setScheme("http")
+                    .setPort(5000)
+                    .setHost(urlstring);
+
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode json = mapper.createObjectNode();
+
+            json.put("ip", args[4]);
+            json.put("port", port);
+
+            URI uri = builder.build();
+            urlstring = uri.toString()
+                    + "/add_user?"
+                    + "candidate=" + args[0]
+                    + "&public_key=" + args[1]
+                    + "&amount=" + args[2]
+                    + "&private_key=" + args[3]
+                    + "&peering_info=" + URLEncoder.encode(mapper.writeValueAsString(json), "UTF-8");
+
+
+//            System.out.println(URLEncoder.encode(mapper.writeValueAsString(json), "UTF-8"));
+
+//            System.out.println(urlstring);
+            //send request
+            URL url = new URL(urlstring);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setDoOutput(true);
+            con.setRequestMethod("GET");
+
+            int status = con.getResponseCode();
+            if (status > 299) {
+                LOGGER.info("Failed to publish user to api");
+                con.disconnect();
+            } else {
+                System.out.println("User " + args[0] + " created and registered on FakeChain!");
+            }
+        } else {
+            System.out.println("Not enough input arguments.");
+        }
     }
 }

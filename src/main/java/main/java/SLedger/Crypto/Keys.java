@@ -1,10 +1,11 @@
-package com.SLedger;
+package main.java.SLedger.Crypto;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Base64;
 
 public class Keys {
+    //for future implementation
 //    public PrivateKey loadPrivateKey(String key64){
 //        byte[] clear = Base64.decodeBase64(key64);
 //        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(clear);
@@ -22,15 +23,15 @@ public class Keys {
 //        return fact.generatePublic(spec);
 //    }
 
-    public static String savePrivateKey(PrivateKey priv){
+    public static String savePrivateKey(PrivateKey priv) {
         String key64 = Base64.getEncoder().encodeToString(priv.getEncoded());
         return key64;
     }
 
 
-    public static String savePublicKey(PublicKey publ){
+    public static String savePublicKey(PublicKey publ) {
         String key64 = Base64.getEncoder().encodeToString(publ.getEncoded());
-        return 	key64;
+        return key64;
     }
 
 }

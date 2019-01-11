@@ -1,4 +1,7 @@
-package com.SLedger;
+package main.java.SLedger.Server;
+
+import main.java.SLedger.Ledger.User;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -8,8 +11,6 @@ import java.net.Socket;
 import java.net.SocketException;
 
 public class Client {
-    private String chatName;// current user's chat name(max 7 char if greater than show as 6
-    // char+...
     private String serverAddress;
 
     // TCP Components
@@ -19,6 +20,7 @@ public class Client {
 
     User peer;
     User user;
+
     public Client(User user, User peer) {
         this.user = user;
         this.peer = peer;
@@ -91,34 +93,10 @@ public class Client {
 
     public void sendChatName() throws IOException {
         String name = user.getCandidate();
-//        if (name == null)
-//            System.exit(1);
-
-//        // title case (get only first 9 chars of chat name)
-//        name = name.trim();
-
-//        if (name.equalsIgnoreCase("All")) {
-//            System.out.println("This name is already reserved. Try different one.");
-//            sendChatName();
-//            return;
-//        }
-//        if (name.length() == 0) {
-////            System.out.println("Please enter your chat name.");
-//            sendChatName();
-//            return;
-//        }
-//        if (name.length() == 1)
-//            chatName = String.valueOf(name.charAt(0)).toUpperCase();
-//        if (name.length() > 1 && name.length() < 10)
-//            chatName = String.valueOf(name.charAt(0)).toUpperCase()
-//                    + name.substring(1).toLowerCase();
-//        else if (name.length() > 9)
-//            chatName = String.valueOf(name.charAt(0)).toUpperCase()
-//                    + name.substring(1, 10).toLowerCase();
-
+        
         // sending opcode first then sending chatName to the server
         out.println(Opcode.CLIENT_CONNECTING);
-        out.println(chatName);
+        out.println(user.getCandidate());
     }
 
     public void runClient() {
@@ -132,7 +110,7 @@ public class Client {
                         boolean result = Boolean.valueOf(in.readLine());
                         if (result) {
                             System.out
-                                    .println(chatName + " is already present. Try different one.");
+                                    .println(user.getCandidate() + " is already present. Try different one.");
                             runClient();
                         }
 
