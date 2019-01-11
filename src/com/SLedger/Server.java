@@ -11,18 +11,17 @@ public class Server {
 
     // Connection state info
     private static LinkedHashMap<String, ClientThread> clientInfo = new LinkedHashMap<String, ClientThread>();
-
+    int port;
     // TCP Components
     private ServerSocket serverSocket;
 
     // Main Constructor
-    public Server() {
-
+    public Server(int port) {
+        this.port = port;
         startServer();// start the server
     }
 
     public void startServer() {
-        String port = "0";
 
         try {
             // in constractor we are passing port no, back log and bind address whick will be local

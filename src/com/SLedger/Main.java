@@ -1,5 +1,7 @@
 package com.SLedger;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Scanner;
 
 public class Main {
@@ -7,9 +9,10 @@ public class Main {
     private static Ledger ledger;
 
     public static void main(String[] args) throws Exception {
+        int port = pickport();
         Runnable r = new Runnable() {
             public void run() {
-                server();
+                server(port);
             }
         };
 //        https://stackoverflow.com/questions/12551514/create-threads-in-java-to-run-in-background
@@ -70,6 +73,17 @@ public class Main {
         }
     }
 
+    public static int pickport() {
+        int port = -1;
+        try {
+            ServerSocket socket = new ServerSocket(0);
+            // here's your free port
+            port = socket.getLocalPort();
+            socket.close();
+        } catch (IOException ioe) {
+        }
+        return port;
+    }
     public static void helpMenu(){
         System.out.println(
                 "\nopen_trustline \n\t[name] \n\t[ip] \n\t[pubkey]  \n\tConnect to another user on FakeChain" +
@@ -79,7 +93,7 @@ public class Main {
         );
     }
 
-    private static void server() {
-        new Server();
+    private static void server(int port) {
+        new Server(port);
     }
 }
