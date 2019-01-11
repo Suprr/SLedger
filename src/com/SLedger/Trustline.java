@@ -17,7 +17,6 @@ public class Trustline {
     public Trustline(User sender, User receiver) {
         this.sender = sender;
         this.receiver = receiver;
-        this.balance = 0;
     }
 
     public User getSender() {
@@ -34,14 +33,6 @@ public class Trustline {
 
     public void setReceiver(User receiver) {
         this.receiver = receiver;
-    }
-
-    public double getBalance() {
-        return balance;
-    }
-
-    public void setBalance(double balance) {
-        this.balance = balance;
     }
 
     public void updateBal(User usrobj, double amount) {

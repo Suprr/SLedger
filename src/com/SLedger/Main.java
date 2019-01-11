@@ -7,6 +7,14 @@ public class Main {
     private static Ledger ledger;
 
     public static void main(String[] args) throws Exception {
+        Runnable r = new Runnable() {
+            public void run() {
+                server();
+            }
+        };
+//        https://stackoverflow.com/questions/12551514/create-threads-in-java-to-run-in-background
+        new Thread(r).start();
+
         ledger = new Ledger();
 
         ledger.assignCurrentUser(new String[]{"1","2","3","4","5"});
@@ -33,7 +41,7 @@ public class Main {
                         scanner.nextLine();
 
                         System.out.println(recipient + " " + ip + " " + pubkey);
-//                        ledger.createTrustline();
+                        ledger.createTrustline(recipient,ip,pubkey);
                         break;
                     case "pay":
                         System.out.println("Who is the recipient and what amount? [Bob]<space>[10]");
@@ -45,6 +53,7 @@ public class Main {
                         ledger.createTransaction(payto,amount);
                         break;
                     case "balance":
+                        ledger.balance();
 //                        System.out.print(line);
                         break;
                     case "help":
@@ -70,4 +79,7 @@ public class Main {
         );
     }
 
+    private static void server() {
+        new Server();
+    }
 }

@@ -143,7 +143,7 @@ public class Ledger {
             total += amount;
 
             Transaction newTrans = new Transaction(user, receiver, line, amount);
-            line.updateBal(receiver, amount);
+//            line.updateBal(receiver, amount);
             transactions.add(newTrans);
             return true;
         } else {
@@ -154,9 +154,9 @@ public class Ledger {
 
     //check if trustline balance will exceed 100 needed for settlement
     public double verifyBalance(Trustline line, double amount){
-        double trustlineBal = line.getBalance();
-        if(trustlineBal + amount > 100){
-            return trustlineBal + amount - 100;
+        double receiverbal = line.getReceiver().getBalance();
+        if(receiverbal + amount > 100){
+            return receiverbal + amount - 100;
         }else return 0;
     }
 
@@ -176,34 +176,37 @@ public class Ledger {
                 }
             }
             if(flag){
-                User sender = line.getSender();
                 User receiver = line.getReceiver();
 
                 double newbalance = verifyBalance(line, amount);
                 //we have not reached our credit limit of 100, simply add the transaction
                 if(newbalance==0){
-                    sender.setBalance(sender.getBalance()-amount);
                     receiver.setBalance(receiver.getBalance()-amount);
                     total -= amount;
 
                     Transaction newTrans = new Transaction(user, receiver, line, amount);
-                    line.updateBal(receiver, -1*amount);
                     transactions.add(newTrans);
+                    return true;
+
                 }else{
-                    settleBalances();
-                    line.setBalance(newbalance);
+//                    settleBalance(line);
+                    //reset receiver balance to remainder of settlement {100-remainder}
+                    receiver.setBalance(newbalance);
+                    //update users total to account for settlement
+                    total += 100;
+                    return true;
                 }
-                return true;
+
             }else{
-                LOGGER.info("Transaction Failed");
+                LOGGER.info("Transaction failed - no TrustLine found");
                 return false;
             }
-
         }
     private String capitalize(final String line) {
         return Character.toUpperCase(line.charAt(0)) + line.substring(1);
     }
 
+    //lists all balances available
     public void balance(){
         for(Trustline t: trustlines){
             String peer = capitalize(t.getReceiver().getCandidate());
@@ -213,10 +216,64 @@ public class Ledger {
         System.out.println("Total: " + total);
     }
 
+    public void settleBalance(Trustline t) throws IOException, URISyntaxException {
+        User receiver = t.getReceiver();
+        User sender = t.getSender();
+        String candidate = t.getSender().getCandidate();
+        String senderPKey = t.getSender().getPubkey();
+        String receiverPKey = t.getReceiver().getPubkey();
+        String senderPrKey = t.getSender().getPrivkey();
+
+        payUserAPI(candidate,senderPKey,receiverPKey, senderPrKey,"100");
+    }
+
+    //User balance in API does not update!
+    //inserts a user into the blockchain
+    public void payUserAPI(String candidate, String senderPKey, String receiverPKey, String senderPrKey,String amount) throws IOException, URISyntaxException {
+        String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
+        URIBuilder builder = new URIBuilder()
+                .setScheme("http")
+                .setPort(5000)
+                .setHost(urlstring);
+
+        /*
+        /pay_user
+                        *URL params*
+         **candidate**: access key given at top of prompt
+         **sender**: public_key of sending node
+         **receiver**: public_key of receiving node
+         **private_key**: private_key of sender to authorize payment
+         **amount**: amount to send
+         */
+
+        URI uri = builder.build();
+        urlstring = uri.toString()
+                +"/pay_user?"
+                +"candidate="+candidate
+                +"&sender="+senderPKey
+                +"&receiver="+receiverPKey
+                +"&private_key="+senderPrKey
+                +"&amount="+amount;
+
+        //send request
+        URL url = new URL(urlstring);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setDoOutput(true);
+        con.setRequestMethod("GET");
+
+        int status = con.getResponseCode();
+        if (status > 299) {
+            LOGGER.info("Failed to publish user to api");
+            con.disconnect();
+        }
+    }
     private void settleBalances() {
         for(Transaction t: transactions){
 //            t.get
         }
+    }
+
+    private void payFakeChain(){
     }
 
 }

@@ -10,5 +10,6 @@
     <orderEntry type="library" name="gson-2.6.2" level="project" />
     <orderEntry type="library" name="commons-codec-1.11" level="project" />
     <orderEntry type="library" name="httpclient-4.5.6" level="project" />
+    <orderEntry type="library" name="org.hive2hive.core-1.2.2" level="project" />
   </component>
 </module>
