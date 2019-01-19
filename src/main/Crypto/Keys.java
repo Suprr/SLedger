@@ -1,4 +1,4 @@
-package main.java.SLedger.Crypto;
+package main.java.SLedger.Ledger;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -27,7 +27,6 @@ public class Keys {
         String key64 = Base64.getEncoder().encodeToString(priv.getEncoded());
         return key64;
     }
-
 
     public static String savePublicKey(PublicKey publ) {
         String key64 = Base64.getEncoder().encodeToString(publ.getEncoded());
