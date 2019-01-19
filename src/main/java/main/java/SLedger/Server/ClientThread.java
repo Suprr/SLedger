@@ -17,7 +17,7 @@ public class ClientThread implements Runnable {
     private PrintWriter out;
     private String name;
 
-    // seperate thread
+    // separate thread
     private Thread thread;
 
     // boolean variable to check that client is running or not
@@ -26,7 +26,7 @@ public class ClientThread implements Runnable {
     // opcode
     private int opcode;
     private Ledger ledger;
-    private HashMap<String, ClientThread> clientInfo = new HashMap<String, ClientThread>();
+    private HashMap<String, ClientThread> clientInfo = new HashMap<>();
 
     public ClientThread(Socket socket, Ledger ledger) {
         try {

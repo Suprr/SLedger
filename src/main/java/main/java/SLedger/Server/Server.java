@@ -12,20 +12,20 @@ import java.util.LinkedHashMap;
 public class Server {
 
     // Connection state info
-    private static LinkedHashMap<String, ClientThread> clientInfo = new LinkedHashMap<String, ClientThread>();
-    String port;
-    Ledger ledger;
+    private static LinkedHashMap<String, ClientThread> clientInfo = new LinkedHashMap<>();
+    private String port;
+    private static Ledger ledger;
     // TCP Components
     private ServerSocket serverSocket;
     // Main Constructor
+
     public Server(String port, Ledger ledger) {
         this.port = port;
         this.ledger = ledger;
         startServer();// start the server
     }
 
-    public void startServer() {
-
+    private void startServer() {
         try {
             // in constructor we are passing port no, back log and bind address which will be localhost
             // port no - the specified port, or 0 to use any free port.
@@ -52,5 +52,9 @@ public class Server {
 
     public static HashMap<String, ClientThread> getClientInfo() {
         return clientInfo;
+    }
+
+    public static Ledger getLedger(){
+        return ledger;
     }
 }

@@ -9,18 +9,17 @@ import java.util.Scanner;
 public class Main {
 
     private static Ledger ledger;
+    private static Server server;
 
     public static void main(String[] args) throws Exception {
         final String port = "" + pickport();
-        Runnable r = new Runnable() {
-            public void run() {
-                server(port, ledger);
-            }
+        Runnable r = () -> {
+            createServer(port, ledger);
         };
 //        https://stackoverflow.com/questions/12551514/create-threads-in-java-to-run-in-background
         new Thread(r).start();
-
         ledger = new Ledger();
+
         //uncommment to test without input arguments as user "test"
 //        ledger.assignCurrentUser(new String[]{"test",
 //                "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3gonoq5MgzGUGZ07+XO2ln2yU" +
@@ -43,32 +42,30 @@ public class Main {
 //                "qiy1Etfx6abtTneSYzJnFO5tzEDSNJ7fUyuna4WStCFP"
 //                ,"192.168.1.1"
 //                }, port);
-        ledger.assignCurrentUser(args, port);
-
         System.out.println("Welcome to SLedger - A decentralized platform to facilitate micropayments across FakeChain!");
+        ledger.assignCurrentUser(args, port);
         System.out.println("Type 'help' to see all commands");
+
         Scanner scanner = new Scanner(System.in);
         try {
             while (scanner.hasNextLine()){
                 String line = scanner.nextLine().toLowerCase();
                 switch (line){
+                    case "openline":
                     case "opentrustline":
                     case "open trustline":
                     case "open_trustline":
-                        System.out.println("Who is the recipient? [Bob]");
+                        System.out.println("Name the recipient: [Bob]");
                         String recipient = scanner.next();
-                        System.out.println("IP address of recipient? [192.168.1.1]");
+                        System.out.println("IP address of recipient: [192.168.1.1]");
                         String ip = scanner.next();
-                        System.out.println("Port?");
+                        System.out.println("Port: [1337]");
                         String peerPort = scanner.next();
-                        System.out.println("Paste their RSA public key such as: <NO HEADERS>\n" +
-                                "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGKukO1De7zhZj6+H0qtjTkVxwTCpvKe4eCZ0\n" +
-                                "FPqri0cb2JZfXJ/DgYSF6vUpwmJG8wVQZKjeGcjDOL5UlsuusFncCzWBQ7RKNUSesmQRMSGkVb1/\n" +
-                                "3j+skZ6UtW+5u09lHNsj6tQ51s1SPrCBkedbNf0Tp0GbMJDyR4e9T04ZZwIDAQAB\n");
+                        System.out.println("Paste their RSA public key: [anything]");
                         String pubkey = scanner.next();
                         scanner.nextLine();
 
-                        ledger.createTrustline(recipient,ip,pubkey,peerPort);
+                        ledger.createTrustline(recipient,ip,peerPort);
                         break;
                     case "pay":
                         System.out.println("Who is the recipient and what amount? [Bob]<space>[10]");
@@ -79,7 +76,6 @@ public class Main {
                         break;
                     case "balance":
                         ledger.balance();
-//                        System.out.print(line);
                         break;
                     case "help":
                         helpMenu();
@@ -116,7 +112,16 @@ public class Main {
         );
     }
 
-    private static void server(String port, Ledger ledger) {
-        new Server(port, ledger);
+    private static void createServer(String port, Ledger ledger) {
+        server = new Server(port, ledger);
     }
+
+    public static Ledger getLedger() {
+        return ledger;
+    }
+
+    public static Server getServer() {
+        return server;
+    }
+
 }

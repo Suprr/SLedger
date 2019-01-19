@@ -14,39 +14,36 @@ public class User {
     //    A instance of a logger use for logging.
     private final static Logger LOGGER = Logger.getLogger(User.class.getName());
 
-    private String candidate;
+    private String name;
     private String pubkey;
     private String privkey;
     private String ip;
     private String port;
     private double balance;
 
-    //create new "account" to be associated with a given trustline object
-    public User(String name, String ip, String pubkey, String port) {
-        this.candidate = name;
+    //for current user
+    public User(String name,String ip, String port, String pubkey, String privkey, double balance) {
+        this.name = name;
         this.ip = ip;
         this.port = port;
         this.pubkey = pubkey;
-        balance = 0;
+        this.privkey = privkey;
+        this.balance = balance;
     }
 
-//    //create new "account" to be associated with a given trustline object for CURRENT USER
-//    public User(String name, String pubkey, String privkey){
-//        this.candidate = name;
-//        String ip = grabIp();
-//        if(!ip.equals("error")){
-//            this.ip = grabIp();
-//            this.port = "3001";
-//        }
-//
-//        this.pubkey = pubkey;
-//        this.privkey = privkey;
-//        balance = 0;
-//    }
+    //create new "account" to be associated with a given trustline object
+    public User(String name, String ip, String port, String pubkey, double balance) {
+        this.name = name;
+        this.ip = ip;
+        this.port = port;
+        this.pubkey = pubkey;
+        this.privkey = "";
+        this.balance = balance;
+    }
 
     /*grab current user ip
     adopted from https://www.geeksforgeeks.org/java-program-find-ip-address-computer/ */
-    public String grabIp() {
+    public static String grabIp() {
         // Find public IP address
         String systemipaddress = "";
         try {
@@ -68,13 +65,12 @@ public class User {
         balance += amount;
     }
 
-
-    public String getCandidate() {
-        return candidate;
+    public String getName() {
+        return name;
     }
 
-    public void setCandidate(String candidate) {
-        this.candidate = candidate;
+    public void setName(String candidate) {
+        this.name = candidate;
     }
 
     public String getPubkey() {
@@ -118,8 +114,7 @@ public class User {
     }
 
     //inserts a user into the blockchain
-    public void addUserAPI(String[] args, String port) throws IOException, URISyntaxException {
-        if (args.length == 5) {
+    public void addUserAPI(User user, String port) throws IOException, URISyntaxException {
             String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
             URIBuilder builder = new URIBuilder()
                     .setScheme("http")
@@ -129,22 +124,21 @@ public class User {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode json = mapper.createObjectNode();
 
-            json.put("ip", args[4]);
+            json.put("ip", user.getIp());
             json.put("port", port);
 
             URI uri = builder.build();
             urlstring = uri.toString()
                     + "/add_user?"
-                    + "candidate=" + args[0]
-                    + "&public_key=" + args[1]
-                    + "&amount=" + args[2]
-                    + "&private_key=" + args[3]
+                    + "candidate=" + "rizzo"
+                    + "&public_key=" + user.getPubkey()
+                    + "&amount=" + user.getBalance()
+                    + "&private_key=" + user.getPrivkey()
                     + "&peering_info=" + URLEncoder.encode(mapper.writeValueAsString(json), "UTF-8");
 
-
 //            System.out.println(URLEncoder.encode(mapper.writeValueAsString(json), "UTF-8"));
-
 //            System.out.println(urlstring);
+
             //send request
             URL url = new URL(urlstring);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
@@ -156,10 +150,20 @@ public class User {
                 LOGGER.info("Failed to publish user to api");
                 con.disconnect();
             } else {
-                System.out.println("User " + args[0] + " created and registered on FakeChain!");
+                System.out.println("User " + user.getPubkey() + " created and registered on FakeChain!");
             }
-        } else {
-            System.out.println("Not enough input arguments.");
         }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "name=" + name +
+                ", pubkey=" + pubkey  +
+                ", privkey=" + privkey  +
+                ", ip=" + ip +
+                ", port=" + port +
+                ", balance=" + balance +
+                '}';
     }
+
 }
