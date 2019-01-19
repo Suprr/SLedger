@@ -10,6 +10,7 @@
 .idea/
 KeyPair/
 target/
+Crypto/
 
 # Generated files
 .idea/**/contentModel.xml
