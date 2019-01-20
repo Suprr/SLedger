@@ -1,6 +1,5 @@
 package main.java.SLedger.Server;
 
-import jdk.nashorn.internal.runtime.regexp.joni.constants.OPCode;
 import main.java.SLedger.Ledger.Ledger;
 import main.java.SLedger.Ledger.Transaction;
 import main.java.SLedger.Ledger.Trustline;
@@ -12,10 +11,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 
-import static main.java.SLedger.Server.Opcode.SETTLE_RECEIVED;
+import static main.java.SLedger.Ledger.Ledger.capitalize;
 
 public class Client {
     private Transaction transaction;
@@ -27,18 +24,21 @@ public class Client {
     private BufferedReader in;
     private PrintWriter out;
 
-    private final Ledger ledger;
-    private Trustline trustline;
-    private User peer;
-    private User user;
+    private volatile Ledger ledger;
+    private volatile Trustline trustline;
+    private volatile User peer;
+    private volatile User user;
 
     public Client(Trustline line, String command) throws IOException {
         this.user = line.getSender();
         this.peer = line.getReceiver();
         this.trustline = line;
         this.ledger = Server.getLedger();
-        initHostName();
-        runClient(command);// have fun
+        if (initHostName()) {
+            runClient(command);// have fun
+        }else{
+            System.out.println(peer.getName() + " could not be reached.");
+        }
     }
 
     public Client(Trustline line, Transaction transaction, String command) throws IOException {
@@ -47,44 +47,42 @@ public class Client {
         this.trustline = line;
         this.transaction = transaction;
         this.ledger = Server.getLedger();
-        initHostName();
-        runClient(command);// have fun
+        if (initHostName()) {
+            runClient(command);// have fun
+        }else{
+            System.out.println(peer.getName() + " could not be reached.");
+        }
     }
 
-    public void initHostName() {
-        try {
-            //replace host name with your computer name or IP address
+
+    public boolean initHostName() throws IOException {
+        //replace host name with your computer name or IP address
 //            String host = InetAddress.getLocalHost().getHostAddress();
-            serverAddress = peer.getIp();
-            if (serverAddress == null)
-                System.out.println("Invalid IP for peer on this Trustline");
+        serverAddress = peer.getIp();
+        if (serverAddress == null)
+            System.out.println("Invalid IP for peer on this Trustline");
 
-            serverAddress = serverAddress.trim();
-            if (serverAddress.length() == 0)// empty field
-            {
-                System.out.println("Server IP Address or Name can't be blank.");
-                initHostName();
-                return;
-            }
-            System.out.println("Trying to connect with server...\nServer IP Address:"
-                    + serverAddress);
-
-            // create socket
-            InetAddress inetAddress = InetAddress.getByName(serverAddress);
-            if (!inetAddress.isReachable(60000))// 60 sec
-            {
-                System.out
-                        .println("Error! Unable to connect with server.\nServer IP Address may be wrong.");
-//                System.exit(1);
-            }
-
-            initPortNo();
-        } catch (SocketException e) {
-            System.out.println("Socket Exception:\n" + e);
+        serverAddress = serverAddress.trim();
+        if (serverAddress.length() == 0)// empty field
+        {
+            System.out.println("Server IP Address or Name can't be blank.");
             initHostName();
-        } catch (IOException e) {
-            initHostName();
+            return false;
         }
+        System.out.println("Trying to connect with " + capitalize(peer.getName())+ " at \n"
+                + serverAddress + ":" + peer.getPort()+"\n");
+
+//            // create socket over NON LAN
+//            InetAddress inetAddress = InetAddress.getByName(serverAddress);
+//            if (!inetAddress.isReachable(5000))// 5 sec
+//            {
+//                System.out
+//                        .println("Error! Unable establish trustline, " + peer.getName()+ " is not online.");
+//                return false;
+//            }
+
+        initPortNo();
+        return true;
     }
 
     public void initPortNo() {
@@ -99,10 +97,12 @@ public class Client {
                 initPortNo();
                 return;
             }
-            System.out.println("Trying to connect with server...\nServer Port No:" + portNo);
+//            System.out.println("Trying to connect with server...\nServer Port No:" + portNo);
             int port = Integer.parseInt(portNo);
 
             socket = new Socket(InetAddress.getByName(serverAddress), port);
+            //timeout if no connection
+            socket.setSoTimeout(10000);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
@@ -129,8 +129,8 @@ public class Client {
         out.flush();
     }
 
-    public void runClient(String command) throws IOException {
-        String [] arrOfStr = command.split("|");
+    public void runClient(String command) {
+        String [] arrOfStr = command.split("\\|");
         if (arrOfStr.length > 0) {
             int opcode = Integer.parseInt(arrOfStr[0]);
 
@@ -145,12 +145,12 @@ public class Client {
                         // check if peer accepted or declined Trustline
                         try {
                             int result = Integer.parseInt(in.readLine());
-                            System.out.println("Response from peer: " + result);
+//                            System.out.println("Response from peer: " + result);
                             if (result== Opcode.CLIENT_ACCPETED){
                                 ledger.addToLines(trustline);
-                                System.out.println("Trustline with " + peer.getName() + "started!");
-                            }else if (result == Opcode.CLIENT_DENIED){
-                                System.out.println("Trustline with " + peer.getName() + "rejected");
+                                System.out.println("Trustline with " + peer.getName() + " started!");
+                            }else if (result == Opcode.CLIENT_REJECT){
+                                System.out.println("Trustline with " + peer.getName() + " rejected.");
                             }
                         } catch (SocketTimeoutException ste) {
                             System.out.println("Peer did not respond for 60 seconds, Trustline not established.");
@@ -167,9 +167,10 @@ public class Client {
                             int result = Integer.parseInt(in.readLine());
                             System.out.println("Response from peer: " + result);
                             if (result== Opcode.PAYMENT_RECEIVED){
-                                ledger.addToTransactions(transaction);
+                                user.setBalance(user.getBalance() + transaction.getAmount());
                                 peer.setBalance(peer.getBalance() - transaction.getAmount());
                                 ledger.updateTotal(-1 * transaction.getAmount());
+                                ledger.addToTransactions(transaction);
 
                                 // inform current user their payment has sent and been received by peer
 //                                System.out.println("Sent");
@@ -184,7 +185,7 @@ public class Client {
                     case Opcode.CLIENT_SETTLE:
                         try {
                             // pay the peer on FakeChain amount of threshold
-                            settleBalance("100");
+                            settleBalance("100",transaction.getAmount());
                             // wait 5 seconds for a response then resend
                             socket.setSoTimeout(5000);
 
@@ -195,39 +196,47 @@ public class Client {
                                 // remove old transactions
                                 ledger.settle(trustline);
 
-                                double newbalance = Double.parseDouble(arrOfStr[1]);
-                                // update current users balance to subtract remainder of transaction
-                                user.setBalance(user.getBalance() - newbalance);
-                                // update current total
-                                ledger.updateTotal(-1 * newbalance);
-                                //reset receiver balance to remainder of settlement {100-remainder}
-                                peer.setBalance(newbalance);
+//                                runClient(Opcode.CLIENT_PAYMENT+"|"+transaction.getAmount());
 
-                                // add remainder transaction if any
-                                ledger.addToTransactions(transaction);
-                                // inform current user their payment has sent and been received by peer
-//                                System.out.println("Sent");
-                                System.out.println("Payment of " + arrOfStr[1] + " to " + peer.getName() + " sent!");
+//                                double newbalance = Double.parseDouble(arrOfStr[1]);
+//                                // update current users balance to subtract remainder of transaction
+////                                user.setBalance(user.getBalance() - newbalance);
+//
+//                                // update current total
+//                                ledger.updateTotal(-1 * newbalance);
+//                                //reset receiver balance to remainder of settlement {100-remainder}
+//                                peer.setBalance(newbalance);
+//
+//                                // add remainder transaction if any
+//                                ledger.addToTransactions(transaction);
+//                                // inform current user their payment has sent and been received by peer
+////                                System.out.println("Sent");
+//                                System.out.println("Payment of " + arrOfStr[1] + " to " + peer.getName() + " sent!");
                             }
                         } catch (SocketTimeoutException | URISyntaxException ste) {
                             System.out.println("Peer did not respond for 60 seconds, payment not sent.\nAttempting to resend...");
                             runClient(command);
                         }
                 }
+            } catch (IOException e) {
+                e.printStackTrace();
             } finally {
-                if (in != null)
-                    in.close();
-                if (out != null)
-                    out.close();
-                if (socket != null)
-                    socket.close();
+                try {
+                    if (in != null)
+                        in.close();
+                    if (out != null)
+                        out.close();
+                    if (socket != null)
+                        socket.close();
+                } catch (IOException e){
+                }
             }
         }else{
             System.out.println("Invalid command length");
         }
     }
 
-    public void settleBalance(String amount) throws IOException, URISyntaxException {
+    public void settleBalance(String amount, int transactionAmount) throws IOException, URISyntaxException {
         Trustline t = trustline;
         User receiver = t.getReceiver();
         User sender = t.getSender();
@@ -240,6 +249,7 @@ public class Client {
         // sending opcode first then sending current users name to the server
         out.println(Opcode.CLIENT_SETTLE);
         out.println(user.getName());
+        out.println(transactionAmount);
         out.flush();
     }
 

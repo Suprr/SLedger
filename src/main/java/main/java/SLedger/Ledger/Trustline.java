@@ -17,23 +17,7 @@ public class Trustline {
     public User getSender() {
         return sender;
     }
-
-    public void setSender(main.java.SLedger.Ledger.User sender) {
-        this.sender = sender;
-    }
-
     public User getReceiver() {
         return receiver;
     }
-
-    public void setReceiver(main.java.SLedger.Ledger.User receiver) {
-        this.receiver = receiver;
-    }
-
-    public void updateBal(main.java.SLedger.Ledger.User usrobj, double amount) {
-        if (amount != 0) {
-            usrobj.update(amount);
-        }
-    }
-
 }

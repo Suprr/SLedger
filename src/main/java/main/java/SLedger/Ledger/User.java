@@ -10,6 +10,8 @@ import java.io.InputStreamReader;
 import java.net.*;
 import java.util.logging.Logger;
 
+import static main.java.SLedger.Ledger.Ledger.capitalize;
+
 public class User {
     //    A instance of a logger use for logging.
     private final static Logger LOGGER = Logger.getLogger(User.class.getName());
@@ -19,10 +21,10 @@ public class User {
     private String privkey;
     private String ip;
     private String port;
-    private double balance;
+    private int balance;
 
     //for current user
-    public User(String name,String ip, String port, String pubkey, String privkey, double balance) {
+    public User(String name,String ip, String port, String pubkey, String privkey, int balance) {
         this.name = name;
         this.ip = ip;
         this.port = port;
@@ -32,7 +34,7 @@ public class User {
     }
 
     //create new "account" to be associated with a given trustline object
-    public User(String name, String ip, String port, String pubkey, double balance) {
+    public User(String name, String ip, String port, String pubkey, int balance) {
         this.name = name;
         this.ip = ip;
         this.port = port;
@@ -43,7 +45,7 @@ public class User {
 
     /*grab current user ip
     adopted from https://www.geeksforgeeks.org/java-program-find-ip-address-computer/ */
-    public static String grabIp() {
+    public static String grabIp() throws UnknownHostException {
         // Find public IP address
         String systemipaddress = "";
         try {
@@ -57,12 +59,10 @@ public class User {
             LOGGER.info("Could not fetch this systems ip address");
 
         }
+        systemipaddress = InetAddress.getLocalHost().getHostAddress();
+
 //        System.out.println("Public IP Address: " + systemipaddress +"\n");
         return systemipaddress;
-    }
-
-    public void update(double amount) {
-        balance += amount;
     }
 
     public String getName() {
@@ -105,16 +105,16 @@ public class User {
         this.port = port;
     }
 
-    public synchronized void setBalance(double balance) {
+    public synchronized void setBalance(int balance) {
         this.balance = balance;
     }
 
-    public synchronized double getBalance() {
+    public synchronized int getBalance() {
         return balance;
     }
 
     //inserts a user into the blockchain
-    public void addUserAPI(User user, String port) throws IOException, URISyntaxException {
+    public static void addUserAPI(User user, String port) throws IOException, URISyntaxException {
             String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
             URIBuilder builder = new URIBuilder()
                     .setScheme("http")
@@ -124,6 +124,7 @@ public class User {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode json = mapper.createObjectNode();
 
+            json.put("name", user.getName());
             json.put("ip", user.getIp());
             json.put("port", port);
 
@@ -150,7 +151,7 @@ public class User {
                 LOGGER.info("Failed to publish user to api");
                 con.disconnect();
             } else {
-                System.out.println("User " + user.getPubkey() + " created and registered on FakeChain!");
+                System.out.println("User " + capitalize(user.getName()) + " created and registered on FakeChain!");
             }
         }
 

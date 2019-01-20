@@ -9,11 +9,11 @@ public class Transaction {
     public String date;
     private main.java.SLedger.Ledger.User sender;
     private main.java.SLedger.Ledger.User receiver;
-    private double amount;
+    private int amount;
     private Trustline trustline;
 
 
-    public Transaction(main.java.SLedger.Ledger.User sender, main.java.SLedger.Ledger.User receiver, main.java.SLedger.Ledger.Trustline trustline, double amount) {
+    public Transaction(main.java.SLedger.Ledger.User sender, main.java.SLedger.Ledger.User receiver, main.java.SLedger.Ledger.Trustline trustline, int amount) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
         this.date = dtf.format(now);
@@ -27,16 +27,8 @@ public class Transaction {
         return date;
     }
 
-    public void setDate(String date) {
-        this.date = date;
-    }
-
     public main.java.SLedger.Ledger.User getSender() {
         return sender;
-    }
-
-    public void setSender(main.java.SLedger.Ledger.User sender) {
-        this.sender = sender;
     }
 
     public main.java.SLedger.Ledger.User getReceiver() {
@@ -51,15 +43,7 @@ public class Transaction {
         return trustline;
     }
 
-    public void setTrustline(main.java.SLedger.Ledger.Trustline trustline) {
-        this.trustline = trustline;
-    }
-
-    public double getAmount() {
+    public int getAmount() {
         return amount;
-    }
-
-    public void setAmount(double amount) {
-        this.amount = amount;
     }
 }

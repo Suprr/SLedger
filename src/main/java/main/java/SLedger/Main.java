@@ -2,23 +2,27 @@ package main.java.SLedger;
 
 import main.java.SLedger.Ledger.Ledger;
 import main.java.SLedger.Server.Server;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
-    private static Ledger ledger;
-    private static Server server;
+    private static volatile Ledger ledger;
+    private static volatile Server server;
+    private static Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) throws Exception {
+        ledger = new Ledger();
+
         final String port = "" + pickport();
-        Runnable r = () -> {
-            createServer(port, ledger);
-        };
+        Runnable r = () -> createServer(port, ledger);
 //        https://stackoverflow.com/questions/12551514/create-threads-in-java-to-run-in-background
         new Thread(r).start();
-        ledger = new Ledger();
+
 
         //uncommment to test without input arguments as user "test"
 //        ledger.assignCurrentUser(new String[]{"test",
@@ -42,15 +46,18 @@ public class Main {
 //                "qiy1Etfx6abtTneSYzJnFO5tzEDSNJ7fUyuna4WStCFP"
 //                ,"192.168.1.1"
 //                }, port);
-        System.out.println("Welcome to SLedger - A decentralized platform to facilitate micropayments across FakeChain!");
+        System.out.println("\n=============================================================\n" +
+                "\t\t\tWelcome to SLedger\nA decentralized platform to facilitate micropayments across FakeChain!\n" +
+                "=============================================================\n"
+        );
+        System.out.println("Type 'help' to see all commands\n");
         ledger.assignCurrentUser(args, port);
-        System.out.println("Type 'help' to see all commands");
 
-        Scanner scanner = new Scanner(System.in);
         try {
-            while (scanner.hasNextLine()){
+            boolean running = true;
+            while (running) {
                 String line = scanner.nextLine().toLowerCase();
-                switch (line){
+                switch (line) {
                     case "openline":
                     case "opentrustline":
                     case "open trustline":
@@ -65,14 +72,29 @@ public class Main {
                         String pubkey = scanner.next();
                         scanner.nextLine();
 
-                        ledger.createTrustline(recipient,ip,peerPort);
+                        CountDownLatch latch = new CountDownLatch(1);
+                        ledger.createTrustline(recipient, ip, peerPort, latch);
+
+                        while (true) {
+                            if (latch.await(2, TimeUnit.SECONDS)) {
+                                break;
+                            }
+                        }
                         break;
                     case "pay":
                         System.out.println("Who is the recipient and what amount? [Bob]<space>[10]");
                         String payto = scanner.next();
-                        double amount = Double.parseDouble(scanner.next());
+                        int amount = Integer.parseInt(scanner.next());
                         scanner.nextLine();
-                        ledger.createTransaction(payto,amount);
+
+                        latch = new CountDownLatch(1);
+                        ledger.createTransaction(payto, amount, latch);
+
+                        while (true) {
+                            if (latch.await(2, TimeUnit.SECONDS)) {
+                                break;
+                            }
+                        }
                         break;
                     case "balance":
                         ledger.balance();
@@ -81,11 +103,14 @@ public class Main {
                         helpMenu();
                         break;
                     case "exit":
-                        System.out.println("Settling all trustlines");
-                        System.exit(0);
+                        System.out.println("Settling all Trustlines");
+                        running = false;
+                    default:
+                        System.out.println("\nPlease enter a command. Type 'help' to see available options: ");
+
                 }
-                System.out.println("\nPlease enter a command. Type 'help' to see available options: ");
             }
+            System.exit(0);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -103,11 +128,11 @@ public class Main {
         return port;
     }
 
-    public static void helpMenu(){
+    public static void helpMenu() {
         System.out.println(
-                "\nopen_trustline \n\t[name] \n\t[ip] \n\t[pubkey]  \n\tConnect to another user on FakeChain" +
-                        "\n\npay [recipient] [integer amount]|[float amount] \n\tSend funds to a peer on an established Trustline until a balance of 100 is reached. Must \n\thave an established Trustline to send funds. Whether you are paying or receiving money if\n\tTrustline balance exceeds 100 it will publish to FakeChain; any remaining balance will rollover back onto the Trustline balance." +
-                        "\n\nbalance \n\tView your total and current Trustline balances"+
+                "\nopen_trustline \n\t\t[name] \n\t\t[ip] \n\t\t[pubkey]  \n\tConnect to another user on FakeChain" +
+                        "\n\npay [recipient] [integer amount]|[float amount] \n\tSend funds to a peer on an established Trustline until a balance of 100 is reached. Must \n\thave an established Trustline to send funds. Whether you are paying or receiving money if\n\tTrustline balance exceeds 100 it will publish to FakeChain; any remaining balance will rollover\n\t back onto the Trustline balance." +
+                        "\n\nbalance \n\tView your total and current Trustline balances" +
                         "\n\nexit \n\tSettle open Trustlines over FakeChain and closes SLedger"
         );
     }

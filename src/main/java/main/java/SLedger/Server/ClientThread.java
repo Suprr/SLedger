@@ -1,6 +1,9 @@
 package main.java.SLedger.Server;
 
 import main.java.SLedger.Ledger.Ledger;
+import main.java.SLedger.Ledger.Transaction;
+import main.java.SLedger.Ledger.Trustline;
+import main.java.SLedger.Main;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,7 +11,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.URISyntaxException;
-import java.util.HashMap;
+import java.sql.Time;
+import java.util.List;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class ClientThread implements Runnable {
     // TCP Components
@@ -25,14 +33,15 @@ public class ClientThread implements Runnable {
 
     // opcode
     private int opcode;
-    private Ledger ledger;
-    private HashMap<String, ClientThread> clientInfo = new HashMap<>();
+    private volatile Ledger ledger;
+    public volatile String choice;
+//    private HashMap<String, ClientThread> clientInfo = new HashMap<>();
 
     public ClientThread(Socket socket, Ledger ledger) {
         try {
             this.socket = socket;
             this.ledger = ledger;
-            this.clientInfo = Server.getClientInfo();
+//            this.clientInfo = Server.getClientInfo();
 
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
@@ -47,50 +56,116 @@ public class ClientThread implements Runnable {
 
     public void run() {
         try {
-            while (isRunning) {
-                if (!in.ready())
-                    continue;
-
-                opcode = Integer.parseInt(in.readLine());// getting opcode first from client
+            String readline;
+            if ((readline = in.readLine()) != null) {
+                opcode = Integer.parseInt(readline);// getting opcode first from client
                 switch (opcode) {
                     case Opcode.CLIENT_CONNECTING: {
-                        name = in.readLine();
+                        String name = in.readLine();
+                        String finalName = name;
 
-                        boolean result = clientInfo.containsKey(name);
-                        out.println(Opcode.CLIENT_CONNECTING);
-                        out.println(result);
-                        if (result)// wait for another chat name if already present
-                            continue;
+                        CountDownLatch latch = new CountDownLatch(1);
 
-                        // put new entry in clientInfo hashmap
-                        clientInfo.put(name, this);
-                        ledger.receiveTrustline(name);
-                        int i = 0;
-                        for (String key : clientInfo.keySet()) {
-                            if (key.equals(name)) {
-                                System.out.println(name + " added at " + (i + 1) + " position");
+                        Runnable r = () -> {
+                            System.out.println(Ledger.capitalize(finalName) + " wants to start a trustline, accept? \n[Y/n]");
+                            Scanner scanner = new Scanner(System.in);
+                            boolean flag = true;
+                            while (flag) {
+                                choice = scanner.nextLine();
+                                scanner.nextLine();
+                                if (choice.equalsIgnoreCase("y") || choice.equalsIgnoreCase("n")) {
+                                    flag = false;
+                                    break;
+                                } else {
+                                    System.out.println("Wrong command, try again");
+                                }
                             }
-                            i++;
+                            latch.countDown();
+                        };
+
+                        Thread input = new Thread(r);
+                        //accessible from both threads
+                        input.start();
+
+                        //wait for user to input Y/n before writing response
+//                        input.sleep(10000);
+                        while (true) {
+                            if (latch.await(2, TimeUnit.SECONDS)) {
+                                break;
+                            }
                         }
 
+                        if (choice.equalsIgnoreCase("y")) {
+                            sendAccept(name);
+                            ledger.receiveTrustline(name);
+                        } else {
+                            sendReject(name);
+                        }
+                        // close all connections
+                        out.close();
+                        in.close();
+                        socket.close();
                         break;
                     }
                     case Opcode.CLIENT_PAYMENT:
                         name = in.readLine();
-                        double amount = Double.parseDouble(in.readLine());// getting opcode first from client
+                        int amount = Integer.parseInt(in.readLine());// getting opcode first from client
+//                        System.out.println("WE GOT PAYMENT");
+                        ledger.receieveTransaction(name, amount);
 
+                        sendPaymentACK();
+                        System.out.println("Received payment of " + amount + " from " + name + "\n");
+                        // close all connections
+                        out.close();
+                        in.close();
+                        socket.close();
+                        break;
+                    case Opcode.CLIENT_SETTLE:
+                        //user that caused settlement handles payout send ACK only thing left to do is clear balances and update total
+                        name = in.readLine();
+                        settleBalance(name);
+                        System.out.println("Received payment which caused Trustline with " + name + " to be settled!\nAnother payment may be coming...\n");
 
+                        // sending opcode first then sending current users name to the server
+                        out.println(Opcode.SETTLE_RECEIVED);
+                        out.flush();
+                    default:
+                        System.out.println("Invalid request. " + readline);
                 }
             }
-
-            // close all connections
-            out.close();
-            in.close();
-            socket.close();
-        } catch (IOException e) {
-//            System.out.println(e);
-        } catch (URISyntaxException e) {
+        } catch (IOException | URISyntaxException | InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private void settleBalance(String name) {
+        Queue<Transaction> transactions = ledger.getTransactions();
+        for (Transaction t : transactions) {
+            String receiver = t.getReceiver().getName();
+            if (receiver.equals(name)) {
+                // update the total so it doesnt reflect the payments that were settled
+                ledger.updateTotal(-1*t.getAmount());
+                // update the senders balance
+                t.getSender().setBalance(t.getSender().getBalance() + t.getAmount());
+                t.getReceiver().setBalance(t.getReceiver().getBalance() - t.getAmount());
+
+                ledger.removeTransaction(t);
+            }
+        }
+    }
+
+    private void sendPaymentACK() {
+        out.println(Opcode.PAYMENT_RECEIVED);
+        out.flush();
+    }
+
+    private void sendAccept(String name) {
+        out.println(Opcode.CLIENT_ACCPETED);
+        out.flush();
+    }
+
+    private void sendReject(String name) {
+        out.println(Opcode.CLIENT_REJECT);
+        out.flush();
     }
 }

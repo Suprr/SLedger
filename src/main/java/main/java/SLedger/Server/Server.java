@@ -11,10 +11,8 @@ import java.util.LinkedHashMap;
 
 public class Server {
 
-    // Connection state info
-    private static LinkedHashMap<String, ClientThread> clientInfo = new LinkedHashMap<>();
     private String port;
-    private static Ledger ledger;
+    private volatile static Ledger ledger;
     // TCP Components
     private ServerSocket serverSocket;
     // Main Constructor
@@ -39,19 +37,14 @@ public class Server {
 
             while (true) {
                 Socket socket = serverSocket.accept();
+                System.out.println("Incoming connection: " + socket.getInetAddress().getHostAddress() + ":" +socket.getPort());
                 new ClientThread(socket,ledger);
             }
         } catch (IOException e) {
             System.out.println("IO Exception:" + e);
-            System.exit(1);
         } catch (NumberFormatException e) {
             System.out.println("Number Format Exception:" + e);
-            System.exit(1);
         }
-    }
-
-    public static HashMap<String, ClientThread> getClientInfo() {
-        return clientInfo;
     }
 
     public static Ledger getLedger(){
