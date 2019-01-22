@@ -48,20 +48,21 @@ public class User {
     public static String grabIp() throws UnknownHostException {
         // Find public IP address
         String systemipaddress = "";
-        try {
-            URL url_name = new URL("http://bot.whatismyipaddress.com");
-            BufferedReader sc = new BufferedReader(new InputStreamReader(url_name.openStream()));
-
-            // reads system IPAddress
-            systemipaddress = sc.readLine().trim();
-        } catch (Exception e) {
-            systemipaddress = "error";
-            LOGGER.info("Could not fetch this systems ip address");
-
-        }
+        // This code is intended for versions that operate outside of LAN
+//        try {
+//            URL url_name = new URL("http://bot.whatismyipaddress.com");
+//            BufferedReader sc = new BufferedReader(new InputStreamReader(url_name.openStream()));
+//
+//            // reads system IPAddress
+//            systemipaddress = sc.readLine().trim();
+//        } catch (Exception e) {
+//            systemipaddress = "error";
+//            LOGGER.info("Could not fetch this systems ip address");
+//
+//        }
         systemipaddress = InetAddress.getLocalHost().getHostAddress();
 
-//        System.out.println("Public IP Address: " + systemipaddress +"\n");
+        System.out.println("You are connected to SLedger at: " + systemipaddress +"\n");
         return systemipaddress;
     }
 

@@ -8,10 +8,12 @@ public class Trustline {
 
     private User sender;
     private User receiver;
+    private int balance;
 
     public Trustline(main.java.SLedger.Ledger.User sender, main.java.SLedger.Ledger.User receiver) {
         this.sender = sender;
         this.receiver = receiver;
+        balance = 0;
     }
 
     public User getSender() {
@@ -19,5 +21,13 @@ public class Trustline {
     }
     public User getReceiver() {
         return receiver;
+    }
+
+    public synchronized int getBalance() {
+        return balance;
+    }
+
+    public synchronized void setBalance(int balance) {
+        this.balance = balance;
     }
 }

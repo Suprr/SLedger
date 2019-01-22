@@ -3,7 +3,7 @@ package main.java.SLedger.Ledger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-//Used for settlement or when trustline balance exceeds 100
+//Used for settlement or when Trustline balance exceeds 100
 public class Transaction {
     //time when transaction made
     public String date;

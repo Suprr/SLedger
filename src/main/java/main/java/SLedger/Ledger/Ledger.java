@@ -1,14 +1,11 @@
 package main.java.SLedger.Ledger;
 
 import com.fasterxml.jackson.core.JsonFactory;
-import main.java.SLedger.Main;
 import main.java.SLedger.Server.Client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import main.java.SLedger.Server.Opcode;
-import main.java.SLedger.Server.Server;
 import org.apache.http.client.utils.URIBuilder;
-import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -44,9 +41,10 @@ public class Ledger {
             int startAmount = Integer.parseInt(args[3]);
             String ip = User.grabIp();
             try {
+                //start new user
                 user = new User(name, ip, port, pkey, prkey, 0);
 
-                //add the user to the blockchain
+                //register the user to the blockchain
                 User.addUserAPI(new User(name, ip, port, pkey, prkey, startAmount), port);
             } catch (IOException e) {
                 System.err.println(e.getMessage());
@@ -57,15 +55,15 @@ public class Ledger {
     }
 
     //establish a trustline between two peers on FakeChain
-    public void createTrustline(String peerName, String ip, String port, CountDownLatch latch) throws IOException, URISyntaxException, InterruptedException {
+    public void createTrustline(String peerName, CountDownLatch latch) throws IOException, URISyntaxException {
 
         //create user to be assigned to a trustline
         User userFromApi = getUserAPI(peerName);
-        userFromApi.setBalance(0);
         if (userFromApi != null) {
+            userFromApi.setBalance(0);
             for (Trustline t : trustlines) {
                 if (t.getReceiver().getName().equals(peerName)) {
-                    System.out.println("Trustline already created with " + peerName);
+                    System.out.println("Trustline already created with " + peerName + ".");
                     return;
                 }
             }
@@ -73,22 +71,17 @@ public class Ledger {
             Trustline newLine = new Trustline(user, userFromApi);
 
             Runnable r = () -> {
-                try {
-                    new Client(newLine, Opcode.CLIENT_CONNECTING + "");
-                    latch.countDown();
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                new Client(newLine, Opcode.CLIENT_CONNECTING + "");
+                latch.countDown();
             };
             Thread thread = new Thread(r);
             thread.start();
         } else {
-            System.out.println("This person does not exist on the blockchain");
+            System.out.println("User does not exist on the FakeChain.");
         }
     }
 
-    //check if a user exists on blockchain
+    //check if a user exists on FakeChain
     public User getUserAPI(String name) throws IOException, URISyntaxException {
         User userFromApi = null;
         String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
@@ -104,7 +97,6 @@ public class Ledger {
 
         //send request
         URL url = new URL(urlstring);
-//        System.out.println(urlstring);
 
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setDoOutput(true);
@@ -116,9 +108,10 @@ public class Ledger {
         String inputLine = in.readLine();
         in.close();
 
-        //parse json
+        //parse json response from server
         List<User> users = parse(inputLine);
         boolean found = false;
+
         if (users != null) {
             for (User tmp : users) {
                 if (tmp.getName().equals(name)) {
@@ -130,22 +123,21 @@ public class Ledger {
 
             if (found) {
                 con.disconnect();
-//                System.out.println(userFromApi);
                 return userFromApi;
             } else {
-                LOGGER.info("Failed to find user in FakeChain");
+//                LOGGER.info("Failed to find user in FakeChain");
                 con.disconnect();
                 return null;
             }
         } else {
-            LOGGER.info("Failed to retrieve any users from FakeChain");
+            System.out.println("Failed to retrieve users from FakeChain");
             con.disconnect();
             return null;
         }
     }
 
 
-    public String stripquotes(String txt) {
+    public String stripQuotes(String txt) {
         if (txt.length() >= 2 && txt.charAt(0) == '"' && txt.charAt(txt.length() - 1) == '"') {
             txt = txt.substring(1, txt.length() - 1);
         }
@@ -153,9 +145,8 @@ public class Ledger {
     }
 
     //{"pubkey2": {"amount": 99, "peering_info": {"ip": "ipaddress", "name": "bob", "port": "port"}}}
+    // hacky solution to parsing dynamic key with nested json above
     public List<User> parse(String json) throws IOException {
-//        System.out.println(json);
-
         JsonFactory factory = new JsonFactory();
         ObjectMapper mapper = new ObjectMapper(factory);
         JsonNode rootNode = mapper.readTree(json);
@@ -202,13 +193,13 @@ public class Ledger {
 
                     switch ((innerinnerfield.getKey())) {
                         case "name":
-                            name = stripquotes(innerinnerfield.getValue() + "");
+                            name = stripQuotes(innerinnerfield.getValue() + "");
                             break;
                         case "ip":
-                            ip = stripquotes(innerinnerfield.getValue() + "");
+                            ip = stripQuotes(innerinnerfield.getValue() + "");
                             break;
                         case "port":
-                            port = stripquotes(innerinnerfield.getValue() + "");
+                            port = stripQuotes(innerinnerfield.getValue() + "");
                             break;
                     }
                 }
@@ -220,24 +211,26 @@ public class Ledger {
         return users;
     }
 
-    //establish a trustline object between two unique identities
-    public void receiveTrustline(String peerName) throws IOException, URISyntaxException {
+    //establish a Trustline between two unique identities
+    public boolean receiveTrustline(String peerName) throws IOException, URISyntaxException {
         User userFromApi = getUserAPI(peerName);
         userFromApi.setBalance(0);
-        boolean found = true;
-        if (found && userFromApi != null) {
+        if (userFromApi != null) {
             for (Trustline t : trustlines) {
                 if (t.getReceiver().getName().equals(peerName)) {
-                    System.out.println("Trustline already created with " + peerName);
-                    return;
+                    System.out.println("Trustline already created with " + peerName + "\n");
+                    return false;
                 }
             }
             // fetch user if they exist in blockchain
             Trustline newLine = new Trustline(user, userFromApi);
             addToLines(newLine);
-            System.out.println("Trustline with " + capitalize(userFromApi.getName()) + " established.");
+            System.out.println("Trustline with " + capitalize(newLine.getReceiver().getName()) + " started!\n");
+            return true;
+
         } else {
-            System.out.println("This person does not exist on the blockchain");
+            System.out.println("This person does not exist on FakeChain!\n");
+            return false;
         }
     }
 
@@ -262,25 +255,31 @@ public class Ledger {
             found = true;
         }
 
-        // we have a trustline and they exist in the api
+        // we have a Trustline and they exist in the api
         if (found && trustlineFlag) {
             User sender = line.getReceiver();
+            User receiver = line.getSender();
 
-            // simply add the transaction... sender already verified trustline balances
+            // update peer user balance to be owed
             sender.setBalance(sender.getBalance() + amount);
-            user.setBalance(user.getBalance() - amount);
+            // update current user balance to owe
+            receiver.setBalance(receiver.getBalance() - amount);
+            // update current users total to be owed
             updateTotal(amount);
+            // update line balance to be owed
+            line.setBalance(line.getBalance() + amount);
 
+            // add the transaction
             Transaction newTrans = new Transaction(user, sender, line, amount);
             addToTransactions(newTrans);
             return true;
         } else {
-            LOGGER.info("Transaction failed user does not exist");
+            System.out.println("Transaction failed user does not exist");
             return false;
         }
     }
 
-    //check if trustline balance will exceed 100 needed for settlement
+    //check if Trustline balance will exceed 100 needed for settlement
     public int verifyBalance(User user, int amount) {
         int receiverbal = user.getBalance();
         if (receiverbal + amount > 100) {
@@ -316,15 +315,11 @@ public class Ledger {
                 Trustline finalLine = line;
 
                 Runnable r = () -> {
-                    try {
-                        new Client(finalLine, newTrans, Opcode.CLIENT_PAYMENT + "|" + amount);
-                        latch.countDown();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    new Client(finalLine, newTrans, Opcode.CLIENT_PAYMENT + "|" + amount);
+                    latch.countDown();
                 };
-                Thread tranasction = new Thread(r);
-                tranasction.start();
+                Thread transaction = new Thread(r);
+                transaction.start();
 
                 return true;
             } else {
@@ -332,23 +327,18 @@ public class Ledger {
                 Trustline finalLine = line;
 
                 Runnable r = () -> {
-                    try {
-                        new Client(finalLine, newTrans, Opcode.CLIENT_SETTLE + "|" + newbalance);
-                        new Client(finalLine, newTrans, Opcode.CLIENT_PAYMENT + "|" + newbalance);
-
-                        latch.countDown();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    new Client(finalLine, newTrans, Opcode.CLIENT_SETTLE + "|" + newbalance);
+                    new Client(finalLine, newTrans, Opcode.CLIENT_PAYMENT + "|" + newbalance);
+                    latch.countDown();
                 };
-                Thread tranasction = new Thread(r);
-                tranasction.start();
+                Thread transaction = new Thread(r);
+                transaction.start();
 
                 return true;
             }
 
         } else {
-            LOGGER.info("Transaction failed - no TrustLine found");
+            System.out.println("Transaction failed - no TrustLine with that person found");
             return false;
         }
     }
@@ -371,7 +361,36 @@ public class Ledger {
         System.out.println("\nTotal: " + total+ "\n");
     }
 
-    private void payFakeChain() {
+    // settleLine all outstanding balances on FakeChain
+    public void settleAllLines(CountDownLatch latch) throws IOException, URISyntaxException, InterruptedException {
+        List<Trustline> lines = getTrustlines();
+
+        if(!lines.isEmpty()) {
+            System.out.println("Settling all Trustlines.");
+
+            String amount, senderPKey, receiverPKey, senderPrKey;
+            for (Trustline t : lines) {
+                //only settleLine outstanding debts
+                if (t.getBalance() < 0) {
+                    User receiver = t.getReceiver();
+                    User sender = t.getSender();
+                    senderPKey = sender.getPubkey();
+                    receiverPKey = receiver.getPubkey();
+                    senderPrKey = sender.getPrivkey();
+                    amount = -1* t.getBalance() + "";
+
+                    payUserAPI(senderPKey, receiverPKey, senderPrKey, amount);
+                }
+                Runnable r = () -> {
+                    new Client(t,Opcode.CLIENT_TERMINATE +"", latch);
+                };
+                Thread transaction = new Thread(r);
+                transaction.start();
+            }
+        }else{
+            System.out.println("No Trustlines to settle.");
+        }
+
     }
 
     public synchronized Queue<Transaction> getTransactions() {
@@ -391,20 +410,21 @@ public class Ledger {
     }
 
     // clear out old transactions
-    public synchronized void settle(Trustline trustline) {
+    public synchronized void settleLine(Trustline trustline) {
+        Queue<Transaction> queue = getTransactions();
         String sender = trustline.getSender().getName();
         String receiver = trustline.getReceiver().getName();
-        for (Transaction t : transactions) {
+        for (Transaction t : queue) {
             if (t.getReceiver().getName().equals(receiver) &&
                     t.getSender().getName().equals(sender)) {
                 // update the total so it doesnt reflect the payments that were settled
                 updateTotal(t.getAmount());
-                // update the senders balance
-                t.getSender().setBalance(t.getSender().getBalance() + t.getAmount());
-                t.getReceiver().setBalance(t.getReceiver().getBalance() - t.getAmount());
-
+                // clear out transaction prior to this settlement
                 removeTransaction(t);
             }
+            // update the balances
+            trustline.getSender().setBalance(0);
+            trustline.getReceiver().setBalance(0);
         }
     }
 
@@ -412,4 +432,60 @@ public class Ledger {
         transactions.remove(t);
     }
 
+    //User balance in API does not update!
+    //inserts a user into the blockchain
+    public void payUserAPI(String senderPKey, String receiverPKey, String senderPrKey, String amount) throws IOException, URISyntaxException {
+        String urlstring = "ec2-34-222-59-29.us-west-2.compute.amazonaws.com";
+        URIBuilder builder = new URIBuilder()
+                .setScheme("http")
+                .setPort(5000)
+                .setHost(urlstring);
+
+        /*
+        /pay_user
+                        *URL params*
+         **candidate**: access key given at top of prompt
+         **sender**: public_key of sending node
+         **receiver**: public_key of receiving node
+         **private_key**: private_key of sender to authorize payment
+         **amount**: amount to send
+         */
+
+        URI uri = builder.build();
+        urlstring = uri.toString()
+                + "/pay_user?"
+                + "candidate=" + "rizzo"
+                + "&sender=" + senderPKey
+                + "&receiver=" + receiverPKey
+                + "&private_key=" + senderPrKey
+                + "&amount=" + amount;
+
+        //send request
+        URL url = new URL(urlstring);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setDoOutput(true);
+        con.setRequestMethod("GET");
+
+        int status = con.getResponseCode();
+        if (status < 299) {
+            String response = "";
+            InputStreamReader in = new InputStreamReader(con.getInputStream());
+            BufferedReader br = new BufferedReader(in);
+            String text = "";
+            while ((text = br.readLine()) != null) {
+                response += text;
+            }
+            if(response.contains("insufficient")){
+                System.out.println("Settling to FakeChain failed: Insufficient funds! Resetting Trustline\n");
+                con.disconnect();
+            }
+        }else{
+            System.out.println("Failed to settleLine on FakeChain!\n");
+            con.disconnect();
+        }
+    }
+
+    public synchronized void removeTrustline(Trustline l) {
+        trustlines.remove(l);
+    }
 }

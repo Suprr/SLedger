@@ -18,37 +18,13 @@ public class Main {
     public static void main(String[] args) throws Exception {
         ledger = new Ledger();
 
-        final String port = "" + pickport();
+        final String port = "" + pickPort();
         Runnable r = () -> createServer(port, ledger);
-//        https://stackoverflow.com/questions/12551514/create-threads-in-java-to-run-in-background
         new Thread(r).start();
 
-
-        //uncommment to test without input arguments as user "test"
-//        ledger.assignCurrentUser(new String[]{"test",
-//                "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3gonoq5MgzGUGZ07+XO2ln2yU" +
-//                "8xaYu6CNdC8L14f4GJy8zXpTMtk/kqdLxQSnXKYI8nzrlon4rVQz1piuMwiZS1fI" +
-//                "z80JpVSDoCThzZ+UQbBy/pj+jXSYC1I1jRz1hFYIiXGSCYwahEqk6rzUKR+L8v6Z" +
-//                "SQ5y5Vj3eIGjP9D+AQIDAQAB"
-//                ,"99",
-//                "MIICXQIBAAKBgQC3gonoq5MgzGUGZ07+XO2ln2yU8xaYu6CNdC8L14f4GJy8zXpT" +
-//                "Mtk/kqdLxQSnXKYI8nzrlon4rVQz1piuMwiZS1fIz80JpVSDoCThzZ+UQbBy/pj+" +
-//                "jXSYC1I1jRz1hFYIiXGSCYwahEqk6rzUKR+L8v6ZSQ5y5Vj3eIGjP9D+AQIDAQAB" +
-//                "AoGBALETRo38WalRcb5/G4t5Elw5/OWxt8FDc8ZrMSaFII/29+97eykjLN0aX1JO" +
-//                "15HDZffGPWJ7TcFnR5QJ5CRb3FOlJCBWZu+9b+1WWuCTvHeyjt3yLh6Df/jscO1O" +
-//                "T9xd1vVGXMdZ9S9ydXjlbEUPY/mtoljvPS6AqY+0QrXgZ5EBAkEA3gTE+ee5iHoA" +
-//                "vnJt4zI9sJAd+27IUJz8fR8gL9+srXlotsKzeE7sfHQT8luuUGfw4/3Vhhf3MV/n" +
-//                "udnxA12P0QJBANOY53KnlRVUVStANe2e80lKNDXLbhlzkoz9YLxH5FZkl7SGNgpe" +
-//                "gJ44/sjPJl/Kiudxy16kN9MUGPaLxYqNxzECQHG888Qq6Ct4hQULzivEQ0I+sn1q" +
-//                "hYh2xAq9dVnRNr8wIWrvV83ccN5ZARb5zNU4SnoiQc8OW/6ZaTcW5ZeZyOECQQCU" +
-//                "j40ofap5UD1/4VQ7olbThSrE/jAt5GvnW1pYtu0FDxlIINa+Tv1kmUWhPXeG19DQ" +
-//                "kJ+lsgyTwU+JgjbOgZ5xAkApH8jt7USmCr7kYIbJjEojhShOhacSwaPPRHs7nASH" +
-//                "qiy1Etfx6abtTneSYzJnFO5tzEDSNJ7fUyuna4WStCFP"
-//                ,"192.168.1.1"
-//                }, port);
         System.out.println("\n=============================================================\n" +
                 "\t\t\tWelcome to SLedger\nA decentralized platform to facilitate micropayments across FakeChain!\n" +
-                "=============================================================\n"
+                "============================================================="
         );
         System.out.println("Type 'help' to see all commands\n");
         ledger.assignCurrentUser(args, port);
@@ -56,7 +32,7 @@ public class Main {
         try {
             boolean running = true;
             while (running) {
-                String line = scanner.nextLine().toLowerCase();
+                String line = scanner.nextLine().toLowerCase().trim();
                 switch (line) {
                     case "openline":
                     case "opentrustline":
@@ -64,37 +40,26 @@ public class Main {
                     case "open_trustline":
                         System.out.println("Name the recipient: [Bob]");
                         String recipient = scanner.next();
-                        System.out.println("IP address of recipient: [192.168.1.1]");
-                        String ip = scanner.next();
-                        System.out.println("Port: [1337]");
-                        String peerPort = scanner.next();
-                        System.out.println("Paste their RSA public key: [anything]");
-                        String pubkey = scanner.next();
                         scanner.nextLine();
 
                         CountDownLatch latch = new CountDownLatch(1);
-                        ledger.createTrustline(recipient, ip, peerPort, latch);
-
-                        while (true) {
-                            if (latch.await(2, TimeUnit.SECONDS)) {
-                                break;
-                            }
-                        }
+                        ledger.createTrustline(recipient, latch);
+                        latch.await();
                         break;
                     case "pay":
                         System.out.println("Who is the recipient and what amount? [Bob]<space>[10]");
                         String payto = scanner.next();
-                        int amount = Integer.parseInt(scanner.next());
+                        while (!scanner.hasNextInt()) {
+                            System.out.println("Please enter a valid number a number!");
+                            scanner.next();
+                        }
+                        int amount = scanner.nextInt();
                         scanner.nextLine();
 
                         latch = new CountDownLatch(1);
                         ledger.createTransaction(payto, amount, latch);
+                        latch.await();
 
-                        while (true) {
-                            if (latch.await(2, TimeUnit.SECONDS)) {
-                                break;
-                            }
-                        }
                         break;
                     case "balance":
                         ledger.balance();
@@ -103,11 +68,14 @@ public class Main {
                         helpMenu();
                         break;
                     case "exit":
-                        System.out.println("Settling all Trustlines");
+                        latch = new CountDownLatch(ledger.getTrustlines().size());
+                        ledger.settleAllLines(latch);
+                        latch.await(5, TimeUnit.SECONDS);
+                        System.out.println("Thanks for using SLedger! Exiting... ");
                         running = false;
+                        break;
                     default:
-                        System.out.println("\nPlease enter a command. Type 'help' to see available options: ");
-
+//                        System.out.println("\nPlease enter a command. Type 'help' to see available options: ");
                 }
             }
             System.exit(0);
@@ -116,7 +84,7 @@ public class Main {
         }
     }
 
-    public static int pickport() {
+    public static int pickPort() {
         int port = -1;
         try {
             ServerSocket socket = new ServerSocket(0);
@@ -139,14 +107,6 @@ public class Main {
 
     private static void createServer(String port, Ledger ledger) {
         server = new Server(port, ledger);
-    }
-
-    public static Ledger getLedger() {
-        return ledger;
-    }
-
-    public static Server getServer() {
-        return server;
     }
 
 }

@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 
 public class Server {
 
@@ -37,7 +35,7 @@ public class Server {
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("Incoming connection: " + socket.getInetAddress().getHostAddress() + ":" +socket.getPort());
+//                System.out.println("Incoming connection: " + socket.getInetAddress().getHostAddress() + ":" +socket.getPort());
                 new ClientThread(socket,ledger);
             }
         } catch (IOException e) {

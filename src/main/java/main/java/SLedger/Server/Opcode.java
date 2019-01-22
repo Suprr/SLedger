@@ -2,7 +2,7 @@ package main.java.SLedger.Server;
 
 public interface Opcode {
     int CLIENT_CONNECTING = 1;
-    int CLIENT_CONNECTED = 2;
+    int CLIENT_TERMINATE = 2;
     int CLIENT_ACCPETED = 3;
     int CLIENT_REJECT = 4;
     int CLIENT_PAYMENT = 5;

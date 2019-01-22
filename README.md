@@ -5,7 +5,7 @@ SLedger aka Simple Ledger is a decentralized credit lending network that facilit
 ### To run SLedger
 Download the jar file SLedger.jar and navigate to its directory and complete the following command:
 ```sh
-$ java -jar Sledger.jar Name RSApublicKey RSAprivateKey Startingamount
+$ java -jar SLedger.jar Name RSApublicKey RSAprivateKey Startingamount
 ```
 #### Note: 
  - 	keys should be a raw string excluding the <---> headers OR anything you choose.
@@ -16,11 +16,16 @@ ln2yU8xaYu6CNdC8L14f4GJy8zXpTMtk/kqdLxQSnXKYI8nzrlon4rVQz1piuMwiZS
 1fIz80JpVSDoCThzZ+UQbBy/pj+jXSYC1I1jRz1hFYIiXGSCYwahEqk6rzUKR+L8v6Z
 SQ5y5Vj3eIGjP9D+AQIDAQAB
 
+##Operation Notes:
+- Settles when Trustline balance > 100… if not enough money to pay out then Trustline gets reset
+
+
 ### Todos
 
- - 	Verify balance for every transaction
- - 	Settle payments over socket
- - 	Error handling/input verification
+ - 	Scanner input from server and main thread – gets hung up when prompting for incoming Trustline
+ - Registers wrong ip address if local ip address resolver does not return wireless LAN adapter
+ - Remove user balances … can settle using just Trustline balances
+
  - 	Concurrency verification
  -  Encrypting Trustline traffic
 
