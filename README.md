@@ -1,6 +1,6 @@
 # SLedger
 
-SLedger aka Simple Ledger is a decentralized credit lending network that facilitates micropayments across the FakeChain blockchain. 
+SLedger, short for Simple Ledger, is a decentralized credit lending network that facilitates micropayments across the FakeChain blockchain. 
 
 ### To run SLedger
 Download the jar file SLedger.jar and navigate to its directory and complete the following command:
